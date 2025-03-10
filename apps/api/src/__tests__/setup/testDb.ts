@@ -64,6 +64,48 @@ class TestDatabase {
   };
 
   /**
+   * Set up the test database environment
+   */
+  async setupTestDb(): Promise<void> {
+    // Verify connection to Supabase
+    const { data, error } = await supabaseAdmin.auth.getSession();
+    
+    if (error) {
+      throw new Error(`Failed to connect to Supabase: ${error.message}`);
+    }
+    
+    console.log('Connected to Supabase for integration tests');
+    
+    // Check if teams table exists
+    try {
+      console.log('Checking if teams table exists...');
+      const { data: teamsData, error: teamsError } = await supabaseAdmin
+        .from('teams')
+        .select('id')
+        .limit(1);
+        
+      if (teamsError) {
+        console.log('Teams table does not exist, creating tables...');
+        
+        // Use Supabase stored procedures to create necessary tables
+        const { error: createTablesError } = await supabaseAdmin.rpc('create_test_tables');
+        
+        if (createTablesError) {
+          console.error('Error creating tables:', createTablesError);
+          throw new Error(`Failed to create test tables: ${createTablesError.message}`);
+        }
+        
+        console.log('Tables created successfully');
+      } else {
+        console.log('Teams table already exists');
+      }
+    } catch (error) {
+      console.error('Error setting up test database:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Generate a unique name for test data
    */
   uniqueName(prefix: string): string {
@@ -360,14 +402,23 @@ class TestDatabase {
       
       console.log(`Found user: ${userData.user.email}`);
       
-      // For testing purposes, we'll create a simple token
-      // In a real app, you'd use a proper JWT
-      const token = Buffer.from(`${userId}:${Date.now()}`).toString('base64');
+      // Skip trying to generate a real JWT via Supabase and go straight to our test tokens
+      // This is more reliable for testing since it doesn't require complex Supabase interaction
+      console.log('Creating test authentication token...');
       
-      console.log(`Generated token for user ${userId}`);
+      // For test environment only - create a bearer token that will be accepted by our modified auth middleware
+      const testOnlyToken = Buffer.from(JSON.stringify({
+        sub: userId,
+        email: userData.user.email,
+        role: 'authenticated',
+        aud: 'authenticated',
+        exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
+      })).toString('base64');
+      
+      console.log(`Created test-only token for ${userId}`);
       
       return {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer test_${testOnlyToken}`
       };
     } catch (error) {
       console.error('Error generating auth header:', error);
@@ -379,45 +430,10 @@ class TestDatabase {
 export const testDb = new TestDatabase();
 
 /**
- * Setup function to be called before tests
+ * Setup function to be called before tests (for backward compatibility)
  */
 export async function setupTestDb(): Promise<void> {
-  // Verify connection to Supabase
-  const { data, error } = await supabaseAdmin.auth.getSession();
-  
-  if (error) {
-    throw new Error(`Failed to connect to Supabase: ${error.message}`);
-  }
-  
-  console.log('Connected to Supabase for integration tests');
-  
-  // Check if teams table exists
-  try {
-    console.log('Checking if teams table exists...');
-    const { data: teamsData, error: teamsError } = await supabaseAdmin
-      .from('teams')
-      .select('id')
-      .limit(1);
-      
-    if (teamsError) {
-      console.log('Teams table does not exist, creating tables...');
-      
-      // Use Supabase stored procedures to create necessary tables
-      const { error: createTablesError } = await supabaseAdmin.rpc('create_test_tables');
-      
-      if (createTablesError) {
-        console.error('Error creating tables:', createTablesError);
-        throw new Error(`Failed to create test tables: ${createTablesError.message}`);
-      }
-      
-      console.log('Tables created successfully');
-    } else {
-      console.log('Teams table already exists');
-    }
-  } catch (error) {
-    console.error('Error setting up test database:', error);
-    throw error;
-  }
+  return testDb.setupTestDb();
 }
 
 /**
