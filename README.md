@@ -70,6 +70,30 @@ This will:
 - Start Supabase if it's not running
 - Start all services using Turborepo
 
+For individual services, use the provided run scripts:
+
+```bash
+# Run the API server with proper environment variables
+./scripts/run-api.sh
+
+# Always run pnpm workspace commands from the project root
+pnpm dev --filter=web
+pnpm dev --filter=services
+```
+
+> **Important**: Always run pnpm workspace commands from the project root directory.
+
+### Environment Variables
+
+Environment variables are critical for the proper functioning of the application. The boilerplate includes:
+
+- `.env`: Base environment variables
+- `.env.local`: Local overrides (not committed to git)
+- `.env.development`: Development-specific variables
+- `.env.production`: Production-specific variables
+
+The run scripts ensure that environment variables are properly loaded before any services start.
+
 ### Testing
 
 Run all tests to verify the boilerplate is working correctly:
@@ -136,6 +160,20 @@ The web frontend is a placeholder Next.js application. It includes:
 - Tailwind CSS for styling
 - Supabase Auth Helpers for authentication
 - TypeScript for type safety
+
+## Troubleshooting
+
+### Environment Variable Issues
+
+If you encounter errors related to missing environment variables (e.g., "supabaseKey is required"), make sure to:
+
+1. Use the provided run scripts that properly load environment variables
+2. Check that your .env file contains all required variables
+3. Run commands from the project root directory
+
+### Path Resolution Issues
+
+Always run pnpm workspace commands from the project root directory. Commands like `pnpm dev --filter=web` will fail if run from nested directories.
 
 ## Documentation
 

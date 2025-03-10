@@ -23,17 +23,24 @@ import { createClient } from '@supabase/supabase-js';
 import * as schema from './schema';
 import { Database } from './types/supabase';
 
-// Environment variables
+// Load environment variables
 const SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const DATABASE_URL = process.env.SUPABASE_DB_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
+// Log environment variables for debugging
+console.log('[DATABASE] Environment variables:');
+console.log(`  SUPABASE_URL = ${SUPABASE_URL}`);
+console.log(`  SUPABASE_ANON_KEY = ${SUPABASE_ANON_KEY ? '[SET]' : '[NOT SET]'}`);
+console.log(`  SUPABASE_SERVICE_ROLE_KEY = ${SUPABASE_SERVICE_ROLE_KEY ? '[SET]' : '[NOT SET]'}`);
+console.log(`  DATABASE_URL = ${DATABASE_URL ? '[SET]' : '[NOT SET]'}`);
+
 // Create a Postgres client (for direct database access)
 const queryClient = postgres(DATABASE_URL, { max: 10 });
 export const db = drizzle(queryClient, { schema });
 
-// Create a Supabase client (for using Supabase features)
+// Create Supabase clients (for using Supabase features)
 export const supabaseAdmin = createClient<Database>(
   SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY
