@@ -23,4 +23,10 @@ cd apps/api
 pnpm test "src/__tests__/basic.test.ts" "src/__tests__/services/teamService.test.ts"
 cd ../..
 
+# Run Services tests
+echo "=== Running Services Basic Tests ==="
+cd apps/services
+pnpm test "src/__tests__/basic.test.ts"
+cd ../..
+
 echo "All Teams basic tests completed!" 

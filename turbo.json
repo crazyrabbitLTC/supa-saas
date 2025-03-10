@@ -9,6 +9,21 @@
     "lint": {
       "outputs": []
     },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true
+    },
+    "test:ui": {
+      "cache": false,
+      "persistent": true
+    },
+    "test:coverage": {
+      "outputs": ["coverage/**"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
