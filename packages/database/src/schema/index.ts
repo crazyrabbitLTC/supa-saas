@@ -15,4 +15,5 @@
  * - Provides a single import point for all schemas
  */
 
-export * from './profiles'; 
+export * from './profiles';
+export * from './teams'; 

@@ -18,6 +18,7 @@
 import { FastifyInstance } from 'fastify';
 import { healthRoutes } from './health';
 import { profileRoutes } from './profiles';
+import { teamRoutes, invitationRoutes } from './teams';
 
 /**
  * Registers all routes with the Fastify server
@@ -32,6 +33,12 @@ export function registerRoutes(server: FastifyInstance): void {
     async (api) => {
       // Register profile routes
       api.register(profileRoutes, { prefix: '/profiles' });
+      
+      // Register team routes
+      api.register(teamRoutes, { prefix: '/teams' });
+      
+      // Register invitation routes
+      api.register(invitationRoutes, { prefix: '/invitations' });
       
       // Add more route modules here
     },
