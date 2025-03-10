@@ -10,6 +10,7 @@ A comprehensive monorepo boilerplate for SaaS applications built with Supabase, 
 - **Modular Architecture**: Clear separation between frontend, API, and background services
 - **Database Management**: Drizzle ORM for type-safe database access with migration support
 - **Local Development**: Seamless local development with Supabase CLI
+- **Testing**: Comprehensive testing setup for all components
 
 ## Project Structure
 
@@ -68,6 +69,35 @@ Start all services in development mode:
 This will:
 - Start Supabase if it's not running
 - Start all services using Turborepo
+
+### Testing
+
+Run all tests to verify the boilerplate is working correctly:
+
+```bash
+./scripts/test-all.sh
+```
+
+This will:
+- Load environment variables
+- Start Supabase if it's not running
+- Build all packages
+- Test database connection
+- Test Supabase connection
+- Test API server
+- Test background services
+
+Individual packages can also be tested:
+
+```bash
+# Test API service
+cd apps/api
+pnpm test
+
+# Test background services
+cd apps/services
+pnpm test
+```
 
 ### Building for Production
 
