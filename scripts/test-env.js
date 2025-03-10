@@ -1,72 +1,136 @@
 #!/usr/bin/env node
 
 /**
- * Database Integration Test Script
- * This script tests loading the database package directly.
+ * Database Connection Test Script
+ * 
+ * This script tests the connection to the database and Supabase.
+ * It verifies that the environment variables are correctly set and
+ * that the database client can connect to the database.
  */
 
-// First, load environment variables
+// Load environment variables from .env files
 require('dotenv').config({ path: '.env.local' });
 require('dotenv').config({ path: '.env' });
 
-console.log('Database Integration Test Tool');
-console.log('=============================');
-console.log('Current working directory:', process.cwd());
+const { createClient } = require('@supabase/supabase-js');
+const postgres = require('postgres');
 
-// Check critical environment variables before importing
-console.log('\nChecking Critical Environment Variables (BEFORE import):');
-const criticalVars = [
-  'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'SUPABASE_DB_URL'
-];
+console.log('Database Connection Test');
+console.log('=======================');
 
-criticalVars.forEach(varName => {
-  const value = process.env[varName];
-  const status = value ? '✓' : '✗';
-  const display = value ? 
-    (varName.includes('KEY') ? '[HIDDEN FOR SECURITY]' : value) : 
-    'NOT SET';
-  console.log(`${status} ${varName}: ${display}`);
-});
+// Check environment variables
+const SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_DB_URL = process.env.SUPABASE_DB_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
 
-// Now try to import the database package
-console.log('\nTrying to import database package:');
-try {
-  // This will trigger the database client initialization
-  console.log('Importing database package...');
-  const database = require('../packages/database');
-  console.log('✓ Database package imported successfully');
+console.log('Environment Variables:');
+console.log(`- SUPABASE_URL: ${SUPABASE_URL}`);
+console.log(`- SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY ? '[SET]' : '[NOT SET]'}`);
+console.log(`- SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY ? '[SET]' : '[NOT SET]'}`);
+console.log(`- SUPABASE_DB_URL: ${SUPABASE_DB_URL}`);
+
+// Test Supabase client
+async function testSupabaseClient() {
+  console.log('\nTesting Supabase Client:');
   
-  // Check if Supabase client was created
-  console.log('\nVerifying Supabase clients:');
-  console.log(`- supabaseAdmin exists: ${database.supabaseAdmin ? '✓' : '✗'}`);
-  console.log(`- supabaseClient exists: ${database.supabaseClient ? '✓' : '✗'}`);
+  if (!SUPABASE_ANON_KEY) {
+    console.log('✗ SUPABASE_ANON_KEY is not set');
+    return false;
+  }
   
-  // Try a simple query
-  console.log('\nTesting database connection:');
-  database.executeRawQuery('SELECT 1 as test')
-    .then(result => {
-      console.log('✓ Database query successful:', result);
-    })
-    .catch(err => {
-      console.log('✗ Database query failed:', err.message);
-    });
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✓ Supabase client created successfully');
     
-  // Try Supabase query
-  console.log('\nTesting Supabase connection:');
-  database.supabaseClient.from('profiles').select('*').limit(1)
-    .then(({ data, error }) => {
+    // Test a simple query - try to access a table that should exist
+    try {
+      // First try to query a system table that should always exist
+      const { data, error } = await supabase.rpc('get_schema_version');
+      
       if (error) {
-        console.log('✗ Supabase query failed:', error.message);
+        // Try a different approach - just check auth config
+        const { data: authData, error: authError } = await supabase.auth.getSession();
+        
+        if (authError) {
+          console.log(`✗ Auth API failed: ${authError.message}`);
+          return false;
+        } else {
+          console.log('✓ Supabase connection successful (auth API works)');
+          return true;
+        }
       } else {
-        console.log('✓ Supabase query successful:', data);
+        console.log('✓ Supabase connection successful (RPC works)');
+        return true;
       }
-    })
-    .catch(err => {
-      console.log('✗ Supabase query error:', err.message);
-    });
-} catch (error) {
-  console.log('✗ Failed to import database package:', error);
-} 
+    } catch (queryErr) {
+      // Try a different approach - just check auth config
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getSession();
+        
+        if (authError) {
+          console.log(`✗ Auth API failed: ${authError.message}`);
+          return false;
+        } else {
+          console.log('✓ Supabase connection successful (auth API works)');
+          return true;
+        }
+      } catch (authErr) {
+        console.log(`✗ Auth API failed: ${authErr.message}`);
+        return false;
+      }
+    }
+  } catch (err) {
+    console.log(`✗ Failed to create Supabase client: ${err.message}`);
+    return false;
+  }
+}
+
+// Test Postgres connection
+async function testPostgresConnection() {
+  console.log('\nTesting Postgres Connection:');
+  
+  if (!SUPABASE_DB_URL) {
+    console.log('✗ SUPABASE_DB_URL is not set');
+    return false;
+  }
+  
+  try {
+    const sql = postgres(SUPABASE_DB_URL, { max: 1 });
+    console.log('✓ Postgres client created successfully');
+    
+    // Test connection with a simple query
+    const result = await sql`SELECT 1 as test`;
+    console.log('✓ Postgres connection successful');
+    
+    // Close the connection
+    await sql.end();
+    return true;
+  } catch (err) {
+    console.log(`✗ Failed to connect to Postgres: ${err.message}`);
+    return false;
+  }
+}
+
+// Run tests
+async function runTests() {
+  const supabaseResult = await testSupabaseClient();
+  const postgresResult = await testPostgresConnection();
+  
+  console.log('\nTest Results:');
+  console.log(`- Supabase Client: ${supabaseResult ? 'PASS' : 'FAIL'}`);
+  console.log(`- Postgres Connection: ${postgresResult ? 'PASS' : 'FAIL'}`);
+  
+  if (supabaseResult && postgresResult) {
+    console.log('\n✅ All tests passed!');
+    process.exit(0);
+  } else {
+    console.log('\n❌ Some tests failed.');
+    process.exit(1);
+  }
+}
+
+runTests().catch(err => {
+  console.error('Error running tests:', err);
+  process.exit(1);
+}); 

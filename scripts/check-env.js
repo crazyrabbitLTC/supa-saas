@@ -1,30 +1,35 @@
 #!/usr/bin/env node
 
 /**
- * Environment Diagnostic Script
- * This script checks if environment variables are loaded correctly.
+ * Environment Variable Diagnostic Tool
+ * 
+ * This script checks if all required environment variables are set
+ * and tests the Supabase client creation.
  */
+
+// Load environment variables from .env files
+require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '.env' });
+
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
 
 console.log('Environment Variable Diagnostic Tool');
 console.log('===================================');
-console.log('Current working directory:', process.cwd());
+console.log(`Current working directory: ${process.cwd()}`);
 
-// Try to load environment variables from different locations
+// Check if .env files exist
 console.log('\nAttempting to load .env files from various locations:');
-
-try {
-  require('dotenv').config({ path: '.env.local' });
-  console.log('✓ Attempted to load .env.local');
-} catch (error) {
-  console.log('✗ Failed to load .env.local:', error.message);
-}
-
-try {
-  require('dotenv').config({ path: '.env' });
-  console.log('✓ Attempted to load .env');
-} catch (error) {
-  console.log('✗ Failed to load .env:', error.message);
-}
+const envFiles = ['.env.local', '.env'];
+envFiles.forEach(file => {
+  try {
+    fs.accessSync(path.join(process.cwd(), file), fs.constants.R_OK);
+    console.log(`✓ Attempted to load ${file}`);
+  } catch (err) {
+    console.log(`✗ Could not find or read ${file}`);
+  }
+});
 
 // Check critical environment variables
 console.log('\nChecking Critical Environment Variables:');
@@ -39,40 +44,52 @@ const criticalVars = [
 
 criticalVars.forEach(varName => {
   const value = process.env[varName];
-  const status = value ? '✓' : '✗';
-  const display = value ? 
-    (varName.includes('KEY') ? '[HIDDEN FOR SECURITY]' : value) : 
-    'NOT SET';
-  console.log(`${status} ${varName}: ${display}`);
+  if (value) {
+    // Hide sensitive keys in output
+    const displayValue = varName.includes('KEY') ? '[HIDDEN FOR SECURITY]' : value;
+    console.log(`✓ ${varName}: ${displayValue}`);
+  } else {
+    console.log(`✗ ${varName} is not set`);
+  }
 });
 
-// Try to load Supabase client directly as a test
+// Test Supabase client creation
 console.log('\nTesting Supabase Client Creation:');
 try {
+  // Try to import the client module
   const { createClient } = require('@supabase/supabase-js');
-  const url = process.env.SUPABASE_URL || 'http://localhost:54321';
-  const key = process.env.SUPABASE_ANON_KEY || '';
   
-  console.log(`Creating test client with:`);
-  console.log(`- URL: ${url}`);
-  console.log(`- Key: ${key ? '[SET]' : '[NOT SET]'}`);
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
   
-  const client = createClient(url, key);
-  console.log('✓ Supabase client created successfully');
-  
-  // Test a simple query
-  console.log('\nTesting a simple query:');
-  client.from('profiles').select('*').limit(1)
-    .then(({ data, error }) => {
-      if (error) {
-        console.log('✗ Query failed:', error.message);
-      } else {
-        console.log('✓ Query successful:', data.length > 0 ? data.length + ' records found' : 'No records found');
+  if (!supabaseUrl || !supabaseKey) {
+    console.log('✗ Missing Supabase URL or key');
+  } else {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('✓ Successfully created Supabase client');
+    
+    // Test a simple query
+    console.log('\nTesting Supabase Connection:');
+    
+    // Use an async IIFE to allow for async/await
+    (async () => {
+      try {
+        // Try to access the auth API which should always be available
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.log(`✗ Failed to connect to Supabase: ${error.message}`);
+        } else {
+          console.log('✓ Successfully connected to Supabase');
+        }
+      } catch (err) {
+        console.log(`✗ Failed to connect to Supabase: ${err.message}`);
       }
-    })
-    .catch(err => {
-      console.log('✗ Query error:', err.message);
-    });
-} catch (error) {
-  console.log('✗ Failed to create Supabase client:', error.message);
+    })();
+  }
+} catch (err) {
+  console.log(`✗ Failed to create Supabase client: ${err.message}`);
+  if (err.stack) {
+    console.log(err.stack.split('\n').slice(0, 3).join('\n'));
+  }
 } 

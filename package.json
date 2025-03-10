@@ -26,12 +26,14 @@
     "env:prod": "cross-env NODE_ENV=production"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.39.3",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "cross-env": "^7.0.3",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.4.7",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
+    "postgres": "^3.4.3",
     "prettier": "^3.2.4",
     "tsx": "^4.7.0",
     "turbo": "^1.11.3",
