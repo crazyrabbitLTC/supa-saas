@@ -553,4 +553,39 @@ describe('Teams Endpoints', () => {
       expect(response.status).toBe(403);
     });
   });
+
+  describe('GET /teams/subscription-tiers', () => {
+    it('should return 401 if not authenticated', async () => {
+      const response = await testContext.request.get('/teams/subscription-tiers');
+      expect(response.status).toBe(401);
+    });
+
+    it('should return all subscription tiers when authenticated', async () => {
+      const userId = testContext.testUser!.id;
+      const authHeader = await testContext.auth.getAuthHeader(userId);
+      
+      const response = await testContext.request
+        .get('/teams/subscription-tiers')
+        .set(authHeader);
+      
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      
+      // Check that we have the expected tiers
+      const tierNames = response.body.map((tier: any) => tier.name);
+      expect(tierNames).toContain('free');
+      expect(tierNames).toContain('basic');
+      expect(tierNames).toContain('pro');
+      expect(tierNames).toContain('enterprise');
+      
+      // Check tier structure
+      const freeTier = response.body.find((tier: any) => tier.name === 'free');
+      expect(freeTier).toHaveProperty('id');
+      expect(freeTier).toHaveProperty('maxMembers');
+      expect(freeTier).toHaveProperty('priceMonthly');
+      expect(freeTier).toHaveProperty('priceYearly');
+      expect(freeTier).toHaveProperty('features');
+      expect(Array.isArray(freeTier.features)).toBe(true);
+    });
+  });
 }); 

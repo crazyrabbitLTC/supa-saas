@@ -30,6 +30,10 @@ pnpm test "src/__tests__/integration/simple.test.ts"
 echo "=== Running Additional API Tests ==="
 pnpm test "src/__tests__/integration/health.test.ts" || echo "Health tests skipped"
 
+# Run profile tests
+echo "=== Running Profile API Tests ==="
+pnpm test "src/__tests__/integration/profiles.test.ts" || echo "Profile tests skipped"
+
 # Note: The following tests require the teams table to exist
 # Uncomment when the database schema is properly set up
 # pnpm test "src/__tests__/integration/teams.test.ts" || echo "Teams tests skipped"

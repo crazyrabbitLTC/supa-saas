@@ -80,6 +80,14 @@ pnpm --filter services dev
 
 ### Testing
 
+This project uses Vitest for testing across all packages. Tests are organized by type:
+
+- **Unit Tests**: Test individual functions and components
+- **Integration Tests**: Test interactions between components
+- **API Tests**: Test API endpoints against a real Supabase instance
+
+#### Running Tests
+
 Run all tests:
 
 ```bash
@@ -107,8 +115,27 @@ pnpm test:coverage
 Run specific feature tests:
 
 ```bash
+# Run team-related tests
 pnpm test:teams
+
+# Run API integration tests
+pnpm test:api:integration
 ```
+
+#### Testing Approach
+
+Our testing approach follows these principles:
+
+1. **Test Isolation**: Each test runs in isolation with its own setup and teardown
+2. **Real Dependencies**: API tests use a real Supabase instance for accurate testing
+3. **Immediate Verification**: Tests are run immediately after creation to catch issues early
+4. **Comprehensive Coverage**: All API endpoints have corresponding tests
+
+#### Test Structure
+
+- `apps/api/src/__tests__/integration/`: API integration tests
+- `apps/api/src/__tests__/setup/`: Test setup utilities
+- `packages/database/src/__tests__/`: Database tests
 
 ### Building
 
