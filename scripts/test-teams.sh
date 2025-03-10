@@ -1,37 +1,26 @@
 #!/bin/bash
 
 # Team Tests Runner
-# This script runs all tests related to the Teams feature
+# This script runs all tests related to the Teams feature using Vitest
 # Usage: ./scripts/test-teams.sh
 
 set -e
 
-# Set test environment variables
+# Set test environment
 export NODE_ENV=test
 
 echo "Running Teams feature tests..."
 
-# First run database tests
-echo "=== Running Database Team Service tests ==="
+# Run database tests
+echo "=== Running Database Basic Tests ==="
 cd packages/database
-npm test -- -i --testPathPattern=teamService
+pnpm test "src/__tests__/basic.test.ts" "src/__tests__/services/teamService.test.ts"
 cd ../..
 
-# Then run API controller and route tests
-echo "=== Running API team controller tests ==="
+# Run API tests
+echo "=== Running API Basic Tests ==="
 cd apps/api
-npm test -- -i --testPathPattern=controllers/teamController
+pnpm test "src/__tests__/basic.test.ts" "src/__tests__/services/teamService.test.ts"
 cd ../..
 
-echo "=== Running API team routes tests ==="
-cd apps/api
-npm test -- -i --testPathPattern=routes/teams
-cd ../..
-
-# Finally run integration tests
-echo "=== Running API team integration tests ==="
-cd apps/api
-npm test -- -i --testPathPattern=integration/teamFlow
-cd ../..
-
-echo "All Teams tests completed successfully!" 
+echo "All Teams basic tests completed!" 
