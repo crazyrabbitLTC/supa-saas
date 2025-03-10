@@ -7,6 +7,18 @@
 
 import { beforeAll, afterAll, beforeEach, afterEach, expect } from 'vitest';
 import { setupTestDb, teardownTestDb, testDb } from './testDb';
+import * as dotenv from 'dotenv';
+import path from 'path';
+
+// Setup environment variables from .env.test (or fall back to .env)
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env.test') });
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+
+// Log environment variables for debugging
+console.log('Environment variables loaded:');
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '[SET]' : '[NOT SET]');
+console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '[SET]' : '[NOT SET]');
 
 // Global setup - runs once before all tests
 beforeAll(async () => {

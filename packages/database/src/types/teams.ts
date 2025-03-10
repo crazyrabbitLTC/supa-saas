@@ -100,6 +100,7 @@ export type Team = SnakeToCamelObject<TeamRow>;
 export type TeamMember = SnakeToCamelObject<TeamMemberRow>;
 export type TeamInvitation = SnakeToCamelObject<TeamInvitationRow>;
 export type SubscriptionTierRecord = SnakeToCamelObject<SubscriptionTierRow>;
+export type SubscriptionTierInfo = SubscriptionTierRecord; // Alias for backward compatibility
 export type TeamAnalytics = SnakeToCamelObject<TeamAnalyticsRow>;
 
 // Insert Types

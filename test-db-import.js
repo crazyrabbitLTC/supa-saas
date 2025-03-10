@@ -1,0 +1,1 @@
+console.log('Attempting to require database package'); try { const db = require('database'); console.log('Database package loaded:', Object.keys(db)); } catch(e) { console.error('Error loading database package:', e.message); }

@@ -11,8 +11,13 @@ import { resolve } from 'path';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['**/*.{test,spec}.{js,ts}'],
-    exclude: ['**/node_modules/**', '**/dist/**'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup}.config.*',
+    ],
     testTimeout: 30000,
     globals: true,
     coverage: {

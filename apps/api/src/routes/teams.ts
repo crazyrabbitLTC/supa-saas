@@ -20,6 +20,7 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { TeamController } from '../controllers/teamController';
 import { sql } from 'drizzle-orm';
+import { supabaseAdmin } from 'database';
 
 export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   const teamController = new TeamController();
@@ -28,31 +29,78 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
   fastify.addHook('onRequest', fastify.authenticate);
 
   // Helper function to add owner information to team responses
-  const formatTeamResponse = async (team: any, db: any) => {
+  const formatTeamResponse = async (team: any) => {
     if (!team) return team;
     
+    console.log(`[DEBUG] formatTeamResponse called for team id: ${team.id}, name: ${team.name}`);
+    console.log(`[DEBUG] Initial team object:`, JSON.stringify(team));
+    console.log(`[DEBUG] Initial team keys:`, Object.keys(team));
+    
+    let ownerId: string | undefined = undefined;
+    
     try {
-      // Find the owner of the team
-      const query = `
-        SELECT user_id 
-        FROM team_members 
-        WHERE team_id = $1 AND role = 'owner' 
-        LIMIT 1
-      `;
-      const result = await db.executeRawQuery(query, [team.id]);
-      if (result && result.rows && result.rows.length > 0) {
-        team.ownerId = result.rows[0].user_id;
+      // Find the owner of the team using Supabase
+      console.log(`[DEBUG] Querying team_members for owner of team ${team.id}`);
+      const { data, error } = await supabaseAdmin
+        .from('team_members')
+        .select('user_id')
+        .eq('team_id', team.id)
+        .eq('role', 'owner')
+        .limit(1)
+        .single();
+      
+      if (error) {
+        console.error(`[ERROR] Error finding team owner for team ${team.id}:`, error);
+      } else if (data) {
+        console.log(`[DEBUG] Found owner for team ${team.id}: ${data.user_id}`);
+        ownerId = data.user_id;
+      } else {
+        console.log(`[WARN] No owner found for team ${team.id}`);
       }
     } catch (error) {
-      console.error('Error finding team owner:', error);
+      console.error(`[ERROR] Exception finding team owner for team ${team.id}:`, error);
     }
     
-    return team;
+    // Create a new object with all properties from the team plus the ownerId
+    const formattedTeam = {
+      ...team,
+      ownerId
+    };
+    
+    console.log(`[DEBUG] Formatted team object:`, JSON.stringify(formattedTeam));
+    console.log(`[DEBUG] Formatted team keys:`, Object.keys(formattedTeam));
+    console.log(`[DEBUG] Checking if ownerId exists and is enumerable:`, 
+      formattedTeam.hasOwnProperty('ownerId'), 
+      Object.getOwnPropertyDescriptor(formattedTeam, 'ownerId')
+    );
+    
+    return formattedTeam;
   };
 
   // Format team arrays before sending
-  const formatTeamsArray = async (teams: any[], db: any) => {
-    return Promise.all(teams.map(team => formatTeamResponse(team, db)));
+  const formatTeamsArray = async (teams: any[]) => {
+    console.log(`[DEBUG] formatTeamsArray: Formatting ${teams.length} teams`);
+    
+    if (!teams || !Array.isArray(teams)) {
+      console.log(`[DEBUG] formatTeamsArray: No teams to format or teams is not an array`);
+      return teams;
+    }
+    
+    // Format each team in the array
+    const formattedTeams = await Promise.all(
+      teams.map(async (team) => {
+        console.log(`[DEBUG] formatTeamsArray: Formatting team ${team.id}`);
+        const formattedTeam = await formatTeamResponse(team);
+        console.log(`[DEBUG] formatTeamsArray: Formatted team ${team.id} with ownerId: ${formattedTeam.ownerId}`);
+        return formattedTeam;
+      })
+    );
+    
+    console.log(`[DEBUG] formatTeamsArray: Completed formatting ${formattedTeams.length} teams`);
+    console.log(`[DEBUG] formatTeamsArray: First team in array:`, 
+      formattedTeams.length > 0 ? JSON.stringify(formattedTeams[0]) : 'No teams');
+    
+    return formattedTeams;
   };
 
   // Helper function to format invitation responses
@@ -67,27 +115,72 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
   };
 
   /**
-   * GET /teams
-   * Get all teams for the current user
+   * Get all teams for current user
    */
-  fastify.get('/', async (request, reply) => {
-    const controller = new TeamController();
-    const response = await controller.getUserTeams(request, reply);
+  fastify.get('/', {
+    schema: {
+      tags: ['teams'],
+      summary: 'Get all teams for current user',
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              slug: { type: 'string' },
+              description: { type: 'string' },
+              logoUrl: { type: 'string' },
+              isPersonal: { type: 'boolean' },
+              subscriptionTier: { type: 'string' },
+              maxMembers: { type: 'number' },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' },
+              ownerId: { type: 'string' }
+            }
+          }
+        }
+      }
+    },
+  }, async (request, reply) => {
+    console.log(`[DEBUG] GET /teams: Fetching user teams`);
     
-    // If the response has already been sent, return it as is
-    if (reply.sent) return response;
-    
-    // Format the teams before sending if it's an array
-    if (Array.isArray(response)) {
-      const formattedTeams = await formatTeamsArray(response, fastify.db);
+    try {
+      // Get all teams for the user
+      const teams = await teamController.getUserTeams(request, reply);
+      
+      // If the response has already been sent, return it as is
+      if (reply.sent) {
+        console.log(`[DEBUG] GET /teams: Reply already sent`);
+        return teams;
+      }
+      
+      // Log the raw teams for debugging
+      console.log(`[DEBUG] GET /teams: Got ${teams ? teams.length : 0} teams from controller`);
+      if (teams && teams.length > 0) {
+        console.log(`[DEBUG] GET /teams: First team before formatting:`, JSON.stringify(teams[0]));
+      }
+      
+      // Format teams array to include ownerId
+      const formattedTeams = await formatTeamsArray(teams);
+      
+      // Log the formatted teams for debugging
+      console.log(`[DEBUG] GET /teams: Returning ${formattedTeams ? formattedTeams.length : 0} formatted teams`);
+      if (formattedTeams && formattedTeams.length > 0) {
+        console.log(`[DEBUG] GET /teams: First team after formatting:`, JSON.stringify(formattedTeams[0]));
+        console.log(`[DEBUG] GET /teams: First team keys:`, Object.keys(formattedTeams[0]));
+        console.log(`[DEBUG] GET /teams: First team ownerId:`, formattedTeams[0].ownerId);
+      }
+      
       return reply.send(formattedTeams);
+    } catch (error) {
+      request.log.error(`Failed to get teams: ${error}`);
+      return reply.status(500).send({ error: 'Failed to get teams' });
     }
-    
-    return response;
   });
 
   /**
-   * POST /teams
    * Create a new team
    */
   fastify.post('/', {
@@ -118,23 +211,45 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
             maxMembers: { type: 'number' },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
-          }
+            ownerId: { type: 'string' }
+          },
+          additionalProperties: true
         }
       }
     },
   }, async (request, reply) => {
-    const response = await teamController.createTeam(request, reply);
-    
-    // If the response has already been sent, return it as is
-    if (reply.sent) return response;
-    
-    // Format the team response
-    if (response && !Array.isArray(response)) {
-      const formattedTeam = await formatTeamResponse(response, fastify.db);
-      return reply.send(formattedTeam);
+    try {
+      const userId = request.user.id;
+      
+      console.log(`[DEBUG] POST /teams: Creating team for user ${userId}`);
+      
+      const team = await teamController.createTeam(request.body, userId);
+      console.log(`[DEBUG] POST /teams: Original team object:`, JSON.stringify(team));
+      console.log(`[DEBUG] POST /teams: Team object properties:`, Object.keys(team));
+      
+      console.log(`[DEBUG] POST /teams: Formatting team response for ${team.id}`);
+      // Format the team response to include the ownerId
+      const formattedTeam = await formatTeamResponse(team);
+      
+      console.log(`[DEBUG] POST /teams: Formatted team object:`, JSON.stringify(formattedTeam));
+      console.log(`[DEBUG] POST /teams: Formatted team properties:`, Object.keys(formattedTeam));
+      console.log(`[DEBUG] POST /teams: Checking if ownerId is enumerable:`, Object.getOwnPropertyDescriptor(formattedTeam, 'ownerId'));
+      
+      // Create a completely new object with all properties explicitly copied
+      const responseObj = {
+        ...formattedTeam,
+        ownerId: formattedTeam.ownerId // Explicitly copy the ownerId
+      };
+      
+      console.log(`[DEBUG] POST /teams: Response object to be sent:`, JSON.stringify(responseObj));
+      console.log(`[DEBUG] POST /teams: Response object properties:`, Object.keys(responseObj));
+      
+      // Return the explicitly constructed response object
+      return reply.code(201).send(responseObj);
+    } catch (error) {
+      request.log.error(`Failed to create team: ${error}`);
+      return reply.code(400).send({ error: 'Failed to create team' });
     }
-    
-    return response;
   });
 
   /**
@@ -142,30 +257,39 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
    * Get a team by ID
    */
   fastify.get('/:id', async (request, reply) => {
+    console.log(`[DEBUG] GET /teams/:id: Fetching team ${request.params.id}`);
     const response = await teamController.getTeamById(request, reply);
     
     // If the response has already been sent, return it as is
-    if (reply.sent) return response;
+    if (reply.sent) {
+      console.log('[DEBUG] GET /teams/:id: Reply already sent');
+      return response;
+    }
     
     // Format the team response
     if (response && !Array.isArray(response)) {
-      const formattedTeam = await formatTeamResponse(response, fastify.db);
+      console.log(`[DEBUG] GET /teams/:id: Formatting team response for ${response.id}`);
+      const formattedTeam = await formatTeamResponse(response);
+      console.log(`[DEBUG] GET /teams/:id: Formatted team response: `, formattedTeam);
       return reply.send(formattedTeam);
     }
     
-    return response;
+    console.log('[DEBUG] GET /teams/:id: Sending response as-is');
+    return reply.send(response);
   });
 
-  // Update a team
-  fastify.put('/:id', {
+  /**
+   * Update team details
+   */
+  fastify.put<{ Params: { id: string }; Body: object }>('/:id', {
     schema: {
       tags: ['teams'],
-      summary: 'Update a team',
+      summary: 'Update team details',
       params: {
         type: 'object',
         required: ['id'],
         properties: {
-          id: { type: 'string', format: 'uuid' }
+          id: { type: 'string' }
         }
       },
       body: {
@@ -174,7 +298,7 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
           name: { type: 'string', minLength: 1, maxLength: 100 },
           description: { type: 'string', maxLength: 500 },
           logoUrl: { type: 'string', format: 'uri' },
-          metadata: { type: 'object' },
+          metadata: { type: 'object' }
         }
       },
       response: {
@@ -191,11 +315,33 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
             maxMembers: { type: 'number' },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
+            ownerId: { type: 'string' }
           }
         }
       }
     },
-    handler: teamController.updateTeam.bind(teamController)
+  }, async (request, reply) => {
+    try {
+      console.log(`[DEBUG] PUT /teams/:id: Updating team ${request.params.id}`);
+      
+      const team = await teamController.updateTeam(request, reply);
+      
+      // If reply was already sent, return as is
+      if (reply.sent) {
+        console.log(`[DEBUG] PUT /teams/:id: Reply already sent for ${request.params.id}`);
+        return team;
+      }
+      
+      // Format the response to include ownerId
+      console.log(`[DEBUG] PUT /teams/:id: Formatting team response for ${request.params.id}`);
+      const formattedTeam = await formatTeamResponse(team);
+      
+      console.log(`[DEBUG] PUT /teams/:id: Returning formatted response for ${request.params.id}`);
+      return reply.send(formattedTeam);
+    } catch (error) {
+      request.log.error(`Failed to update team: ${error}`);
+      return reply.status(500).send({ error: 'Failed to update team' });
+    }
   });
 
   // Delete a team

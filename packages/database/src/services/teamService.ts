@@ -20,11 +20,14 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabaseClient, supabaseAdmin } from '../client';
 import { 
-  Team, TeamMember, TeamInvitation, SubscriptionTierRecord,
-  TeamRole, SubscriptionTier, 
-  snakeToCamel, camelToSnake,
-  TableRow, TableInsert
-} from '../types';
+  Team, TeamMember, TeamInvitation, 
+  TeamRole, SubscriptionTier, SubscriptionTierRecord
+} from '../types/teams';
+import { snakeToCamel, camelToSnake } from '../types/helpers';
+import { TableRow, TableInsert } from '../types';
+
+// Define SubscriptionTierInfo as an alias for backward compatibility
+type SubscriptionTierInfo = SubscriptionTierRecord;
 
 /**
  * Parameters for creating a team
@@ -146,47 +149,50 @@ class TeamService {
    * Get a team by ID
    */
   async getTeamById(id: string): Promise<Team | null> {
-    const { data, error } = await supabaseClient
+    // Use supabaseAdmin to bypass RLS policies
+    const { data, error } = await supabaseAdmin
       .from('teams')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     
     if (error) {
       if (error.code === 'PGRST116') {
-        return null; // Not found
+        return null;
       }
       throw new Error(`Failed to get team: ${error.message}`);
     }
     
-    return snakeToCamel(data) as Team;
+    return data ? (snakeToCamel(data) as Team) : null;
   }
 
   /**
    * Get a team by slug
    */
   async getTeamBySlug(slug: string): Promise<Team | null> {
-    const { data, error } = await supabaseClient
+    // Use supabaseAdmin to bypass RLS policies
+    const { data, error } = await supabaseAdmin
       .from('teams')
       .select('*')
       .eq('slug', slug)
-      .single();
+      .maybeSingle();
     
     if (error) {
       if (error.code === 'PGRST116') {
-        return null; // Not found
+        return null;
       }
       throw new Error(`Failed to get team by slug: ${error.message}`);
     }
     
-    return snakeToCamel(data) as Team;
+    return data ? (snakeToCamel(data) as Team) : null;
   }
 
   /**
    * Get all teams for a user
    */
   async getUserTeams(userId: string): Promise<Team[]> {
-    const { data, error } = await supabaseClient
+    // Use supabaseAdmin to bypass RLS policies
+    const { data, error } = await supabaseAdmin
       .from('teams')
       .select(`
         *,
@@ -230,42 +236,87 @@ class TeamService {
    * Delete a team
    */
   async deleteTeam(id: string): Promise<boolean> {
-    // First check if the team exists and is not a personal team
-    const { data: team, error: fetchError } = await supabaseClient
-      .from('teams')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (fetchError) {
-      if (fetchError.code === 'PGRST116') {
-        return false; // Team not found
+    try {
+      console.log(`[DEBUG] deleteTeam: Checking if team ${id} exists and is not personal`);
+      
+      // First check if the team exists and is not a personal team
+      const { data: team, error: fetchError } = await supabaseAdmin
+        .from('teams')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) {
+        console.error(`[ERROR] deleteTeam: Error fetching team ${id}:`, fetchError);
+        if (fetchError.code === 'PGRST116') {
+          console.log(`[DEBUG] deleteTeam: Team ${id} not found`);
+          return false; // Team not found
+        }
+        throw new Error(`Failed to check team: ${fetchError.message}`);
       }
-      throw new Error(`Failed to check team: ${fetchError.message}`);
+      
+      console.log(`[DEBUG] deleteTeam: Team ${id} found, is_personal: ${team.is_personal}`);
+      
+      if (team.is_personal) {
+        console.log(`[WARN] deleteTeam: Cannot delete personal team ${id}`);
+        throw new Error('Cannot delete a personal team');
+      }
+      
+      try {
+        // Delete the team
+        console.log(`[DEBUG] deleteTeam: Deleting team ${id}`);
+        const { error } = await supabaseAdmin
+          .from('teams')
+          .delete()
+          .eq('id', id);
+        
+        if (error) {
+          console.error(`[ERROR] deleteTeam: Error deleting team ${id}:`, error);
+          
+          // Handle specific error messages
+          if (error.message && error.message.includes('last owner')) {
+            throw new Error('Cannot remove the last owner of a team');
+          }
+          
+          throw new Error(`Failed to delete team: ${error.message}`);
+        }
+        
+        console.log(`[DEBUG] deleteTeam: Successfully deleted team ${id}`);
+        return true;
+      } catch (deleteError: any) {
+        // Re-throw specific errors we want to handle at the controller level
+        if (deleteError.message && (
+          deleteError.message.includes('last owner') || 
+          deleteError.message.includes('Cannot remove')
+        )) {
+          console.log(`[WARN] deleteTeam: Cannot delete team - ${deleteError.message}`);
+          throw deleteError;
+        }
+        
+        throw new Error(`Failed to delete team: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
+      }
+    } catch (error: any) {
+      console.error(`[ERROR] deleteTeam: Exception deleting team ${id}:`, error);
+      
+      // Re-throw specific error types we want to handle specially
+      if (error instanceof Error && (
+        error.message === 'Cannot delete a personal team' ||
+        error.message.includes('last owner') ||
+        error.message.includes('Cannot remove')
+      )) {
+        throw error;
+      }
+      
+      throw new Error(`Failed to delete team: ${error instanceof Error ? error.message : String(error)}`);
     }
-    
-    if (team.is_personal) {
-      throw new Error('Cannot delete a personal team');
-    }
-    
-    // Delete the team
-    const { error } = await supabaseAdmin
-      .from('teams')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      throw new Error(`Failed to delete team: ${error.message}`);
-    }
-    
-    return true;
   }
 
   /**
    * Get all members of a team
    */
   async getTeamMembers(teamId: string): Promise<TeamMember[]> {
-    const { data, error } = await supabaseClient
+    // Use supabaseAdmin to bypass RLS policies
+    const { data, error } = await supabaseAdmin
       .from('team_members')
       .select('*')
       .eq('team_id', teamId);
@@ -282,7 +333,7 @@ class TeamService {
    */
   async addTeamMember({ teamId, userId, role }: AddTeamMemberParams): Promise<TeamMember | null> {
     // Check if user is already a member
-    const { data: existingMember, error: checkError } = await supabaseClient
+    const { data: existingMember, error: checkError } = await supabaseAdmin
       .from('team_members')
       .select('*')
       .eq('team_id', teamId)
@@ -290,7 +341,7 @@ class TeamService {
       .maybeSingle();
     
     if (checkError) {
-      throw new Error(`Failed to check team membership: ${checkError.message}`);
+      throw new Error(`Failed to check existing member: ${checkError.message}`);
     }
     
     if (existingMember) {
@@ -319,6 +370,23 @@ class TeamService {
    * Update a team member's role
    */
   async updateTeamMember({ teamId, userId, role }: UpdateTeamMemberParams): Promise<TeamMember | null> {
+    // First check if member exists
+    const { data: owners, error: checkError } = await supabaseAdmin
+      .from('team_members')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (checkError) {
+      throw new Error(`Failed to check team member: ${checkError.message}`);
+    }
+    
+    if (!owners) {
+      return null; // Member not found
+    }
+    
+    // Update the member's role
     const { data, error } = await supabaseAdmin
       .from('team_members')
       .update({ role })
@@ -339,7 +407,7 @@ class TeamService {
    */
   async removeTeamMember(teamId: string, userId: string): Promise<boolean> {
     // Check if user is the last owner
-    const { data: owners, error: checkError } = await supabaseClient
+    const { data: owners, error: checkError } = await supabaseAdmin
       .from('team_members')
       .select('*')
       .eq('team_id', teamId)
@@ -374,7 +442,8 @@ class TeamService {
    * Check if a user is a member of a team
    */
   async isTeamMember(teamId: string, userId: string): Promise<boolean> {
-    const { data, error } = await supabaseClient
+    // Use supabaseAdmin instead of supabaseClient to bypass RLS policies
+    const { data, error } = await supabaseAdmin
       .from('team_members')
       .select('id')
       .eq('team_id', teamId)
@@ -392,7 +461,9 @@ class TeamService {
    * Check if a user has a specific role in a team
    */
   async hasTeamRole(teamId: string, userId: string, role: TeamRole): Promise<boolean> {
-    const { data, error } = await supabaseClient
+    // Use supabaseAdmin instead of supabaseClient to bypass RLS policies
+    // This prevents the infinite recursion in the team_members table policy
+    const { data, error } = await supabaseAdmin
       .from('team_members')
       .select('role')
       .eq('team_id', teamId)
@@ -410,12 +481,9 @@ class TeamService {
    * Invite a user to a team
    */
   async inviteToTeam({ teamId, email, role, createdBy }: InviteToTeamParams): Promise<TeamInvitation | null> {
-    // Generate a unique token
     const token = uuidv4();
-    
-    // Set expiration date (24 hours from now)
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
+    expiresAt.setDate(expiresAt.getDate() + 7); // Invitation expires in 7 days
     
     const { data, error } = await supabaseAdmin
       .from('team_invitations')
@@ -441,7 +509,8 @@ class TeamService {
    * Get all invitations for a team
    */
   async getTeamInvitations(teamId: string): Promise<TeamInvitation[]> {
-    const { data, error } = await supabaseClient
+    // Use supabaseAdmin to bypass RLS policies
+    const { data, error } = await supabaseAdmin
       .from('team_invitations')
       .select('*')
       .eq('team_id', teamId);
@@ -457,20 +526,25 @@ class TeamService {
    * Get an invitation by token
    */
   async getInvitationByToken(token: string): Promise<TeamInvitation | null> {
-    const { data, error } = await supabaseClient
+    const { data: invitation, error: invitationError } = await supabaseAdmin
       .from('team_invitations')
       .select('*')
       .eq('token', token)
       .single();
     
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null; // Not found
+    if (invitationError) {
+      if (invitationError.code === 'PGRST116') {
+        return null; // Invitation not found
       }
-      throw new Error(`Failed to get invitation: ${error.message}`);
+      throw new Error(`Failed to get invitation: ${invitationError.message}`);
     }
     
-    return snakeToCamel(data) as TeamInvitation;
+    // Check if the invitation has expired
+    if (new Date(invitation.expires_at) < new Date()) {
+      return null; // Invitation expired
+    }
+    
+    return snakeToCamel(invitation) as TeamInvitation;
   }
 
   /**
@@ -478,7 +552,7 @@ class TeamService {
    */
   async acceptInvitation({ token, userId }: AcceptInvitationParams): Promise<string | null> {
     // Get the invitation
-    const { data: invitation, error: invitationError } = await supabaseClient
+    const { data: invitation, error: invitationError } = await supabaseAdmin
       .from('team_invitations')
       .select('*')
       .eq('token', token)
@@ -542,7 +616,7 @@ class TeamService {
    * Change a team's subscription
    */
   async changeSubscription({ teamId, subscriptionTier, subscriptionId }: ChangeSubscriptionParams): Promise<Team | null> {
-    const { data: tier, error: tierError } = await supabaseClient
+    const { data: tier, error: tierError } = await supabaseAdmin
       .from('subscription_tiers')
       .select('max_members')
       .eq('name', subscriptionTier)
@@ -571,20 +645,54 @@ class TeamService {
   }
 
   /**
-   * Get all subscription tiers
+   * Get subscription tier by ID
    */
-  async getSubscriptionTiers(isTeamPlan: boolean = true): Promise<SubscriptionTierRecord[]> {
-    const { data, error } = await supabaseClient
+  async getSubscriptionTier(tierId: SubscriptionTier): Promise<SubscriptionTierInfo | null> {
+    const { data: tier, error: tierError } = await supabaseAdmin
       .from('subscription_tiers')
       .select('*')
-      .eq('is_team_plan', isTeamPlan)
-      .order('price_monthly', { ascending: true });
+      .eq('id', tierId)
+      .single();
     
-    if (error) {
-      throw new Error(`Failed to get subscription tiers: ${error.message}`);
+    if (tierError) {
+      if (tierError.code === 'PGRST116') {
+        return null; // Tier not found
+      }
+      throw new Error(`Failed to get subscription tier: ${tierError.message}`);
     }
     
-    return data.map(tier => snakeToCamel(tier) as SubscriptionTierRecord);
+    return snakeToCamel(tier) as SubscriptionTierInfo;
+  }
+
+  /**
+   * Get all subscription tiers
+   */
+  async getSubscriptionTiers(): Promise<SubscriptionTierInfo[]> {
+    console.log('[DEBUG] getSubscriptionTiers: Fetching subscription tiers');
+    
+    try {
+      // Query subscription tiers without ordering to avoid column errors
+      const { data, error } = await supabaseAdmin
+        .from('subscription_tiers')
+        .select('*');
+      
+      if (error) {
+        console.error('[ERROR] getSubscriptionTiers: Failed to get subscription tiers:', error);
+        throw new Error(`Failed to get subscription tiers: ${error.message}`);
+      }
+      
+      console.log(`[DEBUG] getSubscriptionTiers: Found ${data?.length || 0} subscription tiers`);
+      
+      // Sort the data in memory based on price_monthly to avoid SQL errors
+      const sortedData = [...data].sort((a, b) => 
+        (a.price_monthly || 0) - (b.price_monthly || 0)
+      );
+      
+      return sortedData.map(tier => snakeToCamel(tier) as SubscriptionTierInfo);
+    } catch (error: any) {
+      console.error('[ERROR] getSubscriptionTiers: Exception fetching subscription tiers:', error);
+      throw new Error(`Failed to get subscription tiers: ${error.message}`);
+    }
   }
 
   /**

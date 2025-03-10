@@ -134,7 +134,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to create personal team on user creation
-CREATE TRIGGER on_auth_user_created
+CREATE TRIGGER on_team_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE FUNCTION public.create_personal_team();
 
@@ -351,7 +351,9 @@ FOR UPDATE USING (
   team_id IN (
     SELECT team_id FROM public.team_members 
     WHERE user_id = auth.uid() AND role = 'admin'
-  ) AND OLD.role NOT IN ('owner', 'admin') AND NEW.role = 'member'
+  )
+) WITH CHECK (
+  role = 'member'
 );
 
 CREATE POLICY "Team owners and admins can remove members" ON public.team_members

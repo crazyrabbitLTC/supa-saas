@@ -740,15 +740,280 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_tiers: {
+        Row: {
+          created_at: string
+          features: Json | null
+          id: string
+          is_team_plan: boolean
+          max_members: number
+          max_resources: Json | null
+          name: Database["public"]["Enums"]["subscription_tier"]
+          price_monthly: number
+          price_yearly: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          features?: Json | null
+          id?: string
+          is_team_plan?: boolean
+          max_members: number
+          max_resources?: Json | null
+          name: Database["public"]["Enums"]["subscription_tier"]
+          price_monthly: number
+          price_yearly: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          features?: Json | null
+          id?: string
+          is_team_plan?: boolean
+          max_members?: number
+          max_resources?: Json | null
+          name?: Database["public"]["Enums"]["subscription_tier"]
+          price_monthly?: number
+          price_yearly?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      team_analytics: {
+        Row: {
+          active_users: number
+          created_at: string
+          id: string
+          month: string
+          resource_usage: Json | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          active_users?: number
+          created_at?: string
+          id?: string
+          month: string
+          resource_usage?: Json | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          active_users?: number
+          created_at?: string
+          id?: string
+          month?: string
+          resource_usage?: Json | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_analytics_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_invitations: {
+        Row: {
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["team_role"]
+          team_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["team_role"]
+          team_id: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["team_role"]
+          team_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["team_role"]
+          team_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["team_role"]
+          team_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["team_role"]
+          team_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_personal: boolean
+          logo_url: string | null
+          max_members: number
+          metadata: Json | null
+          name: string
+          personal_user_id: string | null
+          slug: string
+          subscription_id: string | null
+          subscription_tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_personal?: boolean
+          logo_url?: string | null
+          max_members?: number
+          metadata?: Json | null
+          name: string
+          personal_user_id?: string | null
+          slug: string
+          subscription_id?: string | null
+          subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_personal?: boolean
+          logo_url?: string | null
+          max_members?: number
+          metadata?: Json | null
+          name?: string
+          personal_user_id?: string | null
+          slug?: string
+          subscription_id?: string | null
+          subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_invitation: {
+        Args: {
+          invitation_token: string
+          accepting_user_id: string
+        }
+        Returns: string
+      }
+      create_test_tables: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      disable_rls_for_tests: {
+        Args: {
+          table_name: string
+        }
+        Returns: Json
+      }
+      enable_rls_for_tests: {
+        Args: {
+          table_name: string
+        }
+        Returns: Json
+      }
+      execute_sql: {
+        Args: {
+          sql_query: string
+        }
+        Returns: Json
+      }
+      get_user_teams: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          created_at: string
+          description: string | null
+          id: string
+          is_personal: boolean
+          logo_url: string | null
+          max_members: number
+          metadata: Json | null
+          name: string
+          personal_user_id: string | null
+          slug: string
+          subscription_id: string | null
+          subscription_tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at: string
+        }[]
+      }
+      has_team_role: {
+        Args: {
+          team_id: string
+          user_id: string
+          required_role: Database["public"]["Enums"]["team_role"]
+        }
+        Returns: boolean
+      }
+      is_team_member: {
+        Args: {
+          team_id: string
+          user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      subscription_tier: "free" | "basic" | "pro" | "enterprise"
+      team_role: "owner" | "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
