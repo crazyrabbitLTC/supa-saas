@@ -15,7 +15,7 @@ This document outlines the remaining implementation tasks for the Teams feature 
 | API Routes | ✅ Complete | 100% |
 | Frontend Components | 🔄 Not Started | 0% |
 | Email Integration | 🔄 Not Started | 0% |
-| Testing | 🔄 Not Started | 0% |
+| Testing | 🟡 In Progress | 40% |
 | Documentation | 🟡 Partial | 50% |
 
 ## Frontend Components Implementation

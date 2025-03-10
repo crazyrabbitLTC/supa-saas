@@ -1,5 +1,5 @@
 /**
- * Jest Configuration for API Package
+ * Jest Configuration for Database Package
  */
 module.exports = {
   preset: 'ts-jest',
@@ -8,7 +8,8 @@ module.exports = {
   collectCoverage: true,
   collectCoverageFrom: [
     'src/**/*.ts',
-    '!src/types/**',
+    '!src/types/**', // Exclude generated types
+    '!src/drizzle/**', // Exclude generated files
     '!src/**/*.d.ts'
   ],
   coverageDirectory: 'coverage',
@@ -21,11 +22,9 @@ module.exports = {
       statements: 80
     }
   },
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'
   },
-  testTimeout: 30000, // Increase timeout for API tests
-  setupFilesAfterEnv: [
-    '<rootDir>/src/__tests__/setup.ts'
-  ]
+  testTimeout: 30000 // Increase timeout for database tests
 }; 
