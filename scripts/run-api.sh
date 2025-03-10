@@ -6,8 +6,11 @@
 
 set -e
 
-# Load environment variables from .env file
-if [ -f .env ]; then
+# Load environment variables from .env.local and .env files
+if [ -f .env.local ]; then
+  echo "Loading environment variables from .env.local file..."
+  export $(grep -v '^#' .env.local | xargs)
+elif [ -f .env ]; then
   echo "Loading environment variables from .env file..."
   export $(grep -v '^#' .env | xargs)
 fi
@@ -21,7 +24,13 @@ echo "SUPABASE_DB_URL: ${SUPABASE_DB_URL:-NOT SET}"
 echo "API_PORT: ${API_PORT:-NOT SET}"
 echo "API_HOST: ${API_HOST:-NOT SET}"
 
-# Run the API server
+# Check if any critical variables are missing
+if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SUPABASE_DB_URL" ]; then
+  echo "ERROR: Missing critical environment variables. Please check your .env.local file."
+  exit 1
+fi
+
+# Run the API server with environment variables explicitly set
 echo "Starting API server..."
 cd apps/api
-node dist/index.js 
+NODE_ENV=development SUPABASE_URL="$SUPABASE_URL" SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" SUPABASE_DB_URL="$SUPABASE_DB_URL" API_PORT="$API_PORT" API_HOST="$API_HOST" pnpm dev 

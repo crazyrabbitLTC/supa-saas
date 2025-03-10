@@ -6,8 +6,11 @@
 
 set -e
 
-# Load environment variables from .env file
-if [ -f .env ]; then
+# Load environment variables from .env.local and .env files
+if [ -f .env.local ]; then
+  echo "Loading environment variables from .env.local file..."
+  export $(grep -v '^#' .env.local | xargs)
+elif [ -f .env ]; then
   echo "Loading environment variables from .env file..."
   export $(grep -v '^#' .env | xargs)
 fi
@@ -20,7 +23,13 @@ echo "SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:+SET}"
 echo "SUPABASE_DB_URL: ${SUPABASE_DB_URL:-NOT SET}"
 echo "SERVICES_CRON_ENABLED: ${SERVICES_CRON_ENABLED:-NOT SET}"
 
-# Run the background services
+# Check if any critical variables are missing
+if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$SUPABASE_DB_URL" ]; then
+  echo "ERROR: Missing critical environment variables. Please check your .env.local file."
+  exit 1
+fi
+
+# Run the background services with environment variables explicitly set
 echo "Starting background services..."
 cd apps/services
-node dist/index.js 
+NODE_ENV=development SUPABASE_URL="$SUPABASE_URL" SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" SUPABASE_DB_URL="$SUPABASE_DB_URL" SERVICES_CRON_ENABLED="$SERVICES_CRON_ENABLED" pnpm dev 
