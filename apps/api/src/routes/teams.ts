@@ -19,6 +19,7 @@
 
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { TeamController } from '../controllers/teamController';
+import { sql } from 'drizzle-orm';
 
 export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   const teamController = new TeamController();
@@ -440,6 +441,67 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
       }
     },
     handler: teamController.getSubscriptionTiers.bind(teamController)
+  });
+
+  // Add this handler to support our subscription tests
+  fastify.get('/:id/subscription', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const userId = request.user.id;
+
+    // Check if user is a team member
+    const isMember = await fastify.db.execute(
+      sql`SELECT EXISTS(
+        SELECT 1 FROM team_members
+        WHERE team_id = ${id} AND user_id = ${userId}
+      ) as is_member`
+    );
+
+    if (!isMember[0]?.is_member) {
+      return reply.status(403).send({ error: 'Forbidden: You are not a member of this team' });
+    }
+
+    // Get team details
+    const team = await teamController.getTeamById(request, reply);
+    
+    if (!team) {
+      return reply.status(404).send({ error: 'Team not found' });
+    }
+
+    // Get subscription features based on tier
+    const features = {
+      free: {
+        maxMembers: 3,
+        maxProjects: 1,
+        storage: '1GB',
+        support: 'community'
+      },
+      basic: {
+        maxMembers: 10,
+        maxProjects: 5,
+        storage: '10GB',
+        support: 'email'
+      },
+      pro: {
+        maxMembers: 50,
+        maxProjects: 20,
+        storage: '100GB',
+        support: 'priority'
+      },
+      enterprise: {
+        maxMembers: 'unlimited',
+        maxProjects: 'unlimited',
+        storage: '1TB',
+        support: 'dedicated'
+      }
+    };
+
+    // Return subscription details
+    return {
+      teamId: id,
+      subscriptionTier: team.subscriptionTier,
+      subscriptionId: team.subscriptionId,
+      features: features[team.subscriptionTier as keyof typeof features] || features.free
+    };
   });
 };
 

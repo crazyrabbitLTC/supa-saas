@@ -128,44 +128,57 @@ class TestDatabase {
     const name = overrides.name || this.uniqueName('test-team');
     const isPersonal = overrides.isPersonal !== undefined ? overrides.isPersonal : false;
     
-    // Insert team directly into database
-    const { data, error } = await supabaseAdmin
-      .from('teams')
-      .insert({
-        name,
-        slug: name.toLowerCase().replace(/\s+/g, '-'),
-        owner_id: userId,
-        is_personal: isPersonal,
-        subscription_tier: 'free'
-      })
-      .select()
-      .single();
+    // Debug log to see what's going on
+    console.log('Creating test team with params:', { userId, name, isPersonal });
+    
+    try {
+      // Insert team directly into database
+      const { data, error } = await supabaseAdmin
+        .from('teams')
+        .insert({
+          name,
+          slug: name.toLowerCase().replace(/\s+/g, '-'),
+          owner_id: userId,
+          is_personal: isPersonal,
+          subscription_tier: 'free'
+        })
+        .select()
+        .single();
 
-    if (error) {
-      throw new Error(`Failed to create test team: ${error.message}`);
+      // Debug log any error
+      if (error) {
+        console.error('Error creating team:', error);
+        throw new Error(`Failed to create test team: ${error.message}`);
+      }
+
+      console.log('Successfully created team:', data);
+      
+      const teamId = data.id;
+      this.testIds.teamIds.push(teamId);
+
+      // Add owner as team member
+      const { error: memberError } = await supabaseAdmin
+        .from('team_members')
+        .insert({
+          team_id: teamId,
+          user_id: userId,
+          role: 'owner'
+        });
+
+      if (memberError) {
+        console.error('Error adding team member:', memberError);
+        throw new Error(`Failed to add owner to team: ${memberError.message}`);
+      }
+
+      return {
+        id: teamId,
+        name: data.name,
+        ownerId: userId
+      };
+    } catch (err) {
+      console.error('Unexpected error in createTestTeam:', err);
+      throw err;
     }
-
-    const teamId = data.id;
-    this.testIds.teamIds.push(teamId);
-
-    // Add owner as team member
-    const { error: memberError } = await supabaseAdmin
-      .from('team_members')
-      .insert({
-        team_id: teamId,
-        user_id: userId,
-        role: 'owner'
-      });
-
-    if (memberError) {
-      throw new Error(`Failed to add owner to team: ${memberError.message}`);
-    }
-
-    return {
-      id: teamId,
-      name: data.name,
-      ownerId: userId
-    };
   }
 
   /**
