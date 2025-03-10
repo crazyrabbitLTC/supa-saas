@@ -18,7 +18,6 @@
  */
 
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { drizzle as drizzleSupa } from 'drizzle-orm/supabase-js';
 import postgres from 'postgres';
 import { createClient } from '@supabase/supabase-js';
 import * as schema from './schema';
@@ -45,5 +44,7 @@ export const supabaseClient = createClient<Database>(
   SUPABASE_ANON_KEY
 );
 
-// Create a Drizzle client using Supabase
-export const dbSupa = drizzleSupa(supabaseAdmin, { schema }); 
+// Export a function to execute raw SQL queries
+export const executeRawQuery = async (query: string, params: any[] = []) => {
+  return queryClient.unsafe(query, params);
+}; 

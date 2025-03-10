@@ -16,7 +16,7 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { profiles, type Profile } from 'database';
+import { db, profiles, type Profile, executeRawQuery } from 'database';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -31,7 +31,7 @@ export const profileController = {
    */
   async getProfileById(fastify: FastifyInstance, id: string): Promise<Profile | null> {
     try {
-      const result = await fastify.db
+      const result = await db
         .select()
         .from(profiles)
         .where(eq(profiles.id, id))
@@ -64,7 +64,7 @@ export const profileController = {
       }
       
       // Update profile
-      const result = await fastify.db
+      const result = await db
         .update(profiles)
         .set({
           ...data,

@@ -16,7 +16,7 @@
  */
 
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { sql } from 'drizzle-orm';
+import { executeRawQuery } from 'database';
 
 /**
  * Health check routes
@@ -34,7 +34,7 @@ export const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
     let dbStatus = 'ok';
     try {
       // Simple query to check database connection
-      await fastify.db.execute(sql`SELECT 1`);
+      await executeRawQuery('SELECT 1');
     } catch (error) {
       fastify.log.error(error, 'Database health check failed');
       dbStatus = 'error';

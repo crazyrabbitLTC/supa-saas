@@ -17,7 +17,7 @@
 
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
-import { db, supabaseAdmin, supabaseClient } from 'database';
+import { db, supabaseAdmin, supabaseClient, executeRawQuery } from 'database';
 
 // Extend FastifyInstance type to include database clients
 declare module 'fastify' {
@@ -25,6 +25,7 @@ declare module 'fastify' {
     db: typeof db;
     supabase: typeof supabaseAdmin;
     supabaseClient: typeof supabaseClient;
+    executeRawQuery: typeof executeRawQuery;
   }
 }
 
@@ -37,6 +38,7 @@ const databasePluginAsync: FastifyPluginAsync = async (fastify: FastifyInstance)
   fastify.decorate('db', db);
   fastify.decorate('supabase', supabaseAdmin);
   fastify.decorate('supabaseClient', supabaseClient);
+  fastify.decorate('executeRawQuery', executeRawQuery);
   
   // Log that the database plugin is registered
   fastify.log.info('Database plugin registered');

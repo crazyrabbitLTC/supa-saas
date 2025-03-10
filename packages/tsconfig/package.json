@@ -6,5 +6,7 @@
     "base.json",
     "node.json",
     "nextjs.json"
-  ]
+  ],
+  "dependencies": {},
+  "devDependencies": {}
 } 
