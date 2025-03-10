@@ -6,151 +6,71 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import Fastify from 'fastify';
-import supertest from 'supertest';
+import { initTestServer } from '../setup/testServer';
 
 describe('Health Endpoints', () => {
-  // Test server setup
+  // Test context to store server and request client
   const testContext: {
     server?: any;
     request?: any;
+    cleanup?: () => Promise<void>;
   } = {};
 
   // Setup before all tests
   beforeAll(async () => {
-    // Create a new Fastify instance
-    const server = Fastify({
-      logger: false
-    });
-
-    // Register simple health routes
-    server.get('/health', async () => {
-      const timestamp = new Date().toISOString();
-      return {
-        status: 'ok',
-        timestamp,
-        version: '1.0.0',
-        services: {
-          database: {
-            status: 'ok',
-            latency: 5
-          },
-          supabase: {
-            status: 'ok',
-            latency: 10
-          }
-        }
-      };
-    });
-
-    server.get('/health/details', async () => {
-      const timestamp = new Date().toISOString();
-      return {
-        status: 'ok',
-        timestamp,
-        version: '1.0.0',
-        services: {
-          database: {
-            status: 'ok',
-            latency: 5,
-            details: {
-              version: '14.5.0',
-              connections: 5,
-              uptime: '10h 30m'
-            }
-          },
-          supabase: {
-            status: 'ok',
-            latency: 10,
-            details: {
-              version: '2.0.0',
-              services: {
-                auth: 'running',
-                storage: 'running',
-                functions: 'running'
-              }
-            }
-          }
-        },
-        system: {
-          uptime: 3600,
-          memory: {
-            total: 16384,
-            free: 8192,
-            used: 8192
-          }
-        }
-      };
-    });
-
-    // Initialize server
-    await server.ready();
-    
-    // Create supertest instance
-    const request = supertest(server.server);
-    
-    testContext.server = server;
-    testContext.request = request;
+    console.log('Starting health endpoints test setup...');
+    try {
+      const { server, request, cleanup } = await initTestServer();
+      console.log('Test server initialized successfully');
+      testContext.server = server;
+      testContext.request = request;
+      testContext.cleanup = cleanup;
+      console.log('Health endpoints test setup completed');
+    } catch (error) {
+      console.error('Failed to initialize test server:', error);
+      throw error;
+    }
   });
 
   // Cleanup after all tests
   afterAll(async () => {
-    if (testContext.server) {
-      await testContext.server.close();
+    console.log('Starting health endpoints test cleanup...');
+    if (testContext.cleanup) {
+      try {
+        await testContext.cleanup();
+        console.log('Health endpoints test cleanup completed');
+      } catch (error) {
+        console.error('Cleanup failed:', error);
+      }
     }
   });
 
   it('should return 200 OK for GET /health', async () => {
-    const response = await testContext.request.get('/health');
-    
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('status', 'ok');
-    expect(response.body).toHaveProperty('timestamp');
-    expect(response.body).toHaveProperty('version');
-    expect(response.body).toHaveProperty('services');
-    
-    // Check services
-    expect(response.body.services).toHaveProperty('database');
-    expect(response.body.services.database).toHaveProperty('status');
-    expect(response.body.services).toHaveProperty('supabase');
-    expect(response.body.services.supabase).toHaveProperty('status');
+    console.log('Testing GET /health endpoint...');
+    try {
+      const response = await testContext.request.get('/health');
+      console.log('GET /health response:', response.status, response.body);
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('status', 'ok');
+    } catch (error) {
+      console.error('Error testing GET /health:', error);
+      throw error;
+    }
   });
 
-  it('should return database status in health check', async () => {
-    const response = await testContext.request.get('/health');
-    
-    expect(response.body.services.database.status).toBe('ok');
-    expect(response.body.services.database).toHaveProperty('latency');
-    expect(typeof response.body.services.database.latency).toBe('number');
-  });
-
-  it('should return Supabase status in health check', async () => {
-    const response = await testContext.request.get('/health');
-    
-    expect(response.body.services.supabase.status).toBe('ok');
-    expect(response.body.services.supabase).toHaveProperty('latency');
-    expect(typeof response.body.services.supabase.latency).toBe('number');
-  });
-
-  it('should return detailed health info for GET /health/details', async () => {
-    const response = await testContext.request.get('/health/details');
-    
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('status');
-    expect(response.body).toHaveProperty('timestamp');
-    expect(response.body).toHaveProperty('version');
-    expect(response.body).toHaveProperty('services');
-    expect(response.body).toHaveProperty('system');
-    
-    // Check system info
-    expect(response.body.system).toHaveProperty('uptime');
-    expect(response.body.system).toHaveProperty('memory');
-    expect(response.body.system.memory).toHaveProperty('total');
-    expect(response.body.system.memory).toHaveProperty('free');
-    expect(response.body.system.memory).toHaveProperty('used');
-    
-    // Check services with more details
-    expect(response.body.services.database).toHaveProperty('details');
-    expect(response.body.services.supabase).toHaveProperty('details');
+  it('should return services info in GET /health/detailed', async () => {
+    console.log('Testing GET /health/detailed endpoint...');
+    try {
+      const response = await testContext.request.get('/health/detailed');
+      console.log('GET /health/detailed response:', response.status, response.body);
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('status');
+      expect(response.body).toHaveProperty('timestamp');
+      expect(response.body).toHaveProperty('services.database');
+      expect(response.body).toHaveProperty('services.supabase');
+    } catch (error) {
+      console.error('Error testing GET /health/detailed:', error);
+      throw error;
+    }
   });
 }); 

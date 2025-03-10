@@ -13,7 +13,7 @@ export default defineConfig({
     environment: 'node',
     include: ['**/*.{test,spec}.{js,ts}'],
     exclude: ['**/node_modules/**', '**/dist/**'],
-    testTimeout: 60000, // Increased from 30000 to 60000 to accommodate slower database operations
+    testTimeout: 10000, // Reduced from 60000 to 10000 to make hanging tests fail faster
     globals: true,
     setupFiles: ['./src/__tests__/setup/vitest.setup.ts'],
     coverage: {

@@ -19,19 +19,24 @@
 
 import { FastifyInstance } from 'fastify';
 import { buildServer } from '../server';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock the database and Supabase dependencies
-jest.mock('database', () => ({
-  db: {
-    execute: jest.fn().mockResolvedValue(true),
-  },
-  supabaseAdmin: {
-    auth: {
-      getSession: jest.fn().mockResolvedValue({ data: {}, error: null }),
+vi.mock('database', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    db: {
+      execute: vi.fn().mockResolvedValue(true),
     },
-  },
-  supabaseClient: {},
-}));
+    supabaseAdmin: {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: {}, error: null }),
+      },
+    },
+    supabaseClient: {},
+  };
+});
 
 describe('Health Check Routes', () => {
   let server: FastifyInstance;

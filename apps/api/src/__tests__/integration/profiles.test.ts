@@ -41,10 +41,10 @@ describe('Profile Endpoints', () => {
     }
   });
 
-  describe('GET /profiles/:id', () => {
+  describe('GET /api/v1/profiles/:id', () => {
     it('should return 404 for non-existent profile', async () => {
       const nonExistentId = uuidv4();
-      const response = await testContext.request.get(`/profiles/${nonExistentId}`);
+      const response = await testContext.request.get(`/api/v1/profiles/${nonExistentId}`);
       expect(response.status).toBe(404);
     });
 
@@ -53,7 +53,7 @@ describe('Profile Endpoints', () => {
       const userId = testContext.testUser!.id;
       
       // Get the profile
-      const response = await testContext.request.get(`/profiles/${userId}`);
+      const response = await testContext.request.get(`/api/v1/profiles/${userId}`);
       
       // Verify response
       expect(response.status).toBe(200);
@@ -61,9 +61,9 @@ describe('Profile Endpoints', () => {
     });
   });
 
-  describe('GET /profiles/me', () => {
+  describe('GET /api/v1/profiles/me', () => {
     it('should return 401 if not authenticated', async () => {
-      const response = await testContext.request.get('/profiles/me');
+      const response = await testContext.request.get('/api/v1/profiles/me');
       expect(response.status).toBe(401);
     });
 
@@ -72,7 +72,7 @@ describe('Profile Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(userId);
       
       const response = await testContext.request
-        .get('/profiles/me')
+        .get('/api/v1/profiles/me')
         .set(authHeader);
       
       // Verify response
@@ -81,17 +81,14 @@ describe('Profile Endpoints', () => {
     });
   });
 
-  describe('PATCH /profiles/:id', () => {
+  describe('PATCH /api/v1/profiles/:id', () => {
     it('should return 401 if not authenticated', async () => {
       const userId = testContext.testUser!.id;
-      const updateData = {
-        username: 'newusername',
-        fullName: 'New Name'
-      };
+      const payload = { username: 'newusername' };
       
       const response = await testContext.request
-        .patch(`/profiles/${userId}`)
-        .send(updateData);
+        .patch(`/api/v1/profiles/${userId}`)
+        .send(payload);
       
       expect(response.status).toBe(401);
     });
@@ -110,7 +107,7 @@ describe('Profile Endpoints', () => {
       };
       
       const response = await testContext.request
-        .patch(`/profiles/${anotherUser.id}`)
+        .patch(`/api/v1/profiles/${anotherUser.id}`)
         .set(authHeader)
         .send(updateData);
       
@@ -127,7 +124,7 @@ describe('Profile Endpoints', () => {
       };
       
       const response = await testContext.request
-        .patch(`/profiles/${userId}`)
+        .patch(`/api/v1/profiles/${userId}`)
         .set(authHeader)
         .send(updateData);
       
@@ -138,7 +135,7 @@ describe('Profile Endpoints', () => {
       
       // Verify the profile was actually updated in the database
       const getResponse = await testContext.request
-        .get(`/profiles/${userId}`)
+        .get(`/api/v1/profiles/${userId}`)
         .set(authHeader);
       
       expect(getResponse.body).toHaveProperty('username', updateData.username);
@@ -155,7 +152,7 @@ describe('Profile Endpoints', () => {
       };
       
       const response = await testContext.request
-        .patch(`/profiles/${userId}`)
+        .patch(`/api/v1/profiles/${userId}`)
         .set(authHeader)
         .send(invalidData);
       
