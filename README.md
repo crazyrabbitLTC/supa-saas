@@ -45,23 +45,67 @@ saas-supabase-boilerplate/
 ### Installation
 
 1. Clone the repository
-2. Install dependencies:
+2. Run the setup script:
 
 ```bash
-pnpm install
+./scripts/setup.sh
 ```
 
-3. Start local Supabase:
+This will:
+- Install dependencies
+- Set up environment variables
+- Initialize Supabase
+- Generate Supabase types
+
+### Development
+
+Start all services in development mode:
 
 ```bash
-pnpm supabase:start
+./scripts/dev.sh
 ```
 
-4. Start development servers:
+This will:
+- Start Supabase if it's not running
+- Start all services using Turborepo
+
+### Building for Production
+
+Build all services for production:
 
 ```bash
-pnpm dev
+./scripts/build.sh
 ```
+
+## Services
+
+### API Service
+
+The API service is built with Fastify and provides a RESTful API for the frontend and other services. It includes:
+
+- Type-safe routes with Zod validation
+- Database access with Drizzle ORM
+- Supabase integration
+- Comprehensive error handling
+- Health check endpoints
+
+### Background Services
+
+The background services package contains scheduled jobs and background tasks. It includes:
+
+- Scheduled jobs using node-cron
+- Database access with Drizzle ORM
+- Supabase integration
+- Error handling and recovery
+
+### Web Frontend
+
+The web frontend is a placeholder Next.js application. It includes:
+
+- Next.js 14 with App Router
+- Tailwind CSS for styling
+- Supabase Auth Helpers for authentication
+- TypeScript for type safety
 
 ## Documentation
 
@@ -70,6 +114,9 @@ Each folder in the project contains a README file that explains:
 - Technologies used
 - Guidance for adding new components
 - Conventions to follow
+
+Additional documentation:
+- [Environment Configuration](docs/ENVIRONMENT.md)
 
 ## License
 
