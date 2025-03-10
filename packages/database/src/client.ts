@@ -1,57 +1,71 @@
 /**
  * @file Database Client
- * @version 0.1.0
+ * @version 0.2.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-01-01
  * 
- * Provides database client instances for Drizzle ORM.
+ * Provides database client instances for Supabase.
  * 
  * IMPORTANT:
  * - Use the appropriate client for your use case
- * - The Postgres client is for direct database access
- * - The Supabase client is for using Supabase features
+ * - The Supabase admin client is for server-side operations
+ * - The Supabase client is for client-side operations
  * 
  * Functionality:
- * - Creates and exports database clients
- * - Configures connection pooling
+ * - Creates and exports Supabase clients
  * - Provides typed query interfaces
  */
 
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { createClient } from '@supabase/supabase-js';
-import * as schema from './schema';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from './types/supabase';
 
-// Load environment variables
-const SUPABASE_URL = process.env.SUPABASE_URL || 'http://localhost:54321';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const DATABASE_URL = process.env.SUPABASE_DB_URL || 'postgresql://postgres:postgres@localhost:54322/postgres';
+// DIAGNOSTIC: Log when database client is being initialized
+console.log('[DATABASE] Initializing database client module');
 
-// Log environment variables for debugging
-console.log('[DATABASE] Environment variables:');
-console.log(`  SUPABASE_URL = ${SUPABASE_URL}`);
-console.log(`  SUPABASE_ANON_KEY = ${SUPABASE_ANON_KEY ? '[SET]' : '[NOT SET]'}`);
-console.log(`  SUPABASE_SERVICE_ROLE_KEY = ${SUPABASE_SERVICE_ROLE_KEY ? '[SET]' : '[NOT SET]'}`);
-console.log(`  DATABASE_URL = ${DATABASE_URL ? '[SET]' : '[NOT SET]'}`);
+// Get environment variables (with fallbacks)
+const getEnvVar = (name: string, defaultValue: string = ''): string => {
+  const value = process.env[name] || defaultValue;
+  // Log for diagnostic purposes
+  console.log(`[DATABASE] Environment variable ${name}: ${value ? (name.includes('KEY') ? '[SET]' : value) : '[NOT SET]'}`);
+  return value;
+};
 
-// Create a Postgres client (for direct database access)
-const queryClient = postgres(DATABASE_URL, { max: 10 });
-export const db = drizzle(queryClient, { schema });
+// Create clients lazily to ensure environment variables are loaded
+let _supabaseAdmin: SupabaseClient<Database> | null = null;
+let _supabaseClient: SupabaseClient<Database> | null = null;
 
-// Create Supabase clients (for using Supabase features)
-export const supabaseAdmin = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY
-);
+// Lazy getters for clients
+export const getSupabaseAdmin = () => {
+  if (!_supabaseAdmin) {
+    console.log('[DATABASE] Creating Supabase admin client');
+    const SUPABASE_URL = getEnvVar('SUPABASE_URL', 'http://localhost:54321');
+    const SUPABASE_SERVICE_ROLE_KEY = getEnvVar('SUPABASE_SERVICE_ROLE_KEY');
+    _supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  }
+  return _supabaseAdmin;
+};
 
-export const supabaseClient = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+export const getSupabaseClient = () => {
+  if (!_supabaseClient) {
+    console.log('[DATABASE] Creating Supabase public client');
+    const SUPABASE_URL = getEnvVar('SUPABASE_URL', 'http://localhost:54321');
+    const SUPABASE_ANON_KEY = getEnvVar('SUPABASE_ANON_KEY');
+    _supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return _supabaseClient;
+};
+
+// For backward compatibility
+export const supabaseAdmin = getSupabaseAdmin();
+export const supabaseClient = getSupabaseClient();
 
 // Export a function to execute raw SQL queries
 export const executeRawQuery = async (query: string, params: any[] = []) => {
-  return queryClient.unsafe(query, params);
+  const { data, error } = await supabaseAdmin.rpc('execute_sql', { sql_query: query, params });
+  
+  if (error) {
+    throw new Error(`Failed to execute query: ${error.message}`);
+  }
+  
+  return data;
 }; 

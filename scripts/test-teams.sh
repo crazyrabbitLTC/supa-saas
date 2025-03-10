@@ -11,6 +11,27 @@ export NODE_ENV=test
 
 echo "Running Teams feature tests..."
 
+# Add diagnostic information
+echo "=== Diagnostic Information ==="
+echo "Checking Supabase status..."
+supabase status || echo "Supabase CLI not available or not linked to project"
+
+echo "Checking database connection..."
+if [ -n "$SUPABASE_DB_URL" ]; then
+  echo "Database URL is set: $SUPABASE_DB_URL"
+else
+  echo "Database URL is not set. Using default: postgresql://postgres:postgres@localhost:54322/postgres"
+  export SUPABASE_DB_URL="postgresql://postgres:postgres@localhost:54322/postgres"
+fi
+
+# Try to connect to the database
+echo "Testing database connection..."
+if command -v psql &> /dev/null; then
+  PGPASSWORD=postgres psql -h localhost -p 54322 -U postgres -d postgres -c "SELECT current_database(), current_user, version();" || echo "Failed to connect to database"
+else
+  echo "psql not available, skipping direct database test"
+fi
+
 # Run database tests
 echo "=== Running Database Basic Tests ==="
 cd packages/database

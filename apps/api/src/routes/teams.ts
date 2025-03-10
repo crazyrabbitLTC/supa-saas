@@ -27,36 +27,69 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
   // Require authentication for all team routes
   fastify.addHook('onRequest', fastify.authenticate);
 
-  // Get all teams for the current user
-  fastify.get('/', {
-    schema: {
-      tags: ['teams'],
-      summary: 'Get all teams for the current user',
-      response: {
-        200: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              slug: { type: 'string' },
-              description: { type: 'string' },
-              logoUrl: { type: 'string' },
-              isPersonal: { type: 'boolean' },
-              subscriptionTier: { type: 'string' },
-              maxMembers: { type: 'number' },
-              createdAt: { type: 'string', format: 'date-time' },
-              updatedAt: { type: 'string', format: 'date-time' },
-            }
-          }
-        }
+  // Helper function to add owner information to team responses
+  const formatTeamResponse = async (team: any, db: any) => {
+    if (!team) return team;
+    
+    try {
+      // Find the owner of the team
+      const query = `
+        SELECT user_id 
+        FROM team_members 
+        WHERE team_id = $1 AND role = 'owner' 
+        LIMIT 1
+      `;
+      const result = await db.executeRawQuery(query, [team.id]);
+      if (result && result.rows && result.rows.length > 0) {
+        team.ownerId = result.rows[0].user_id;
       }
-    },
-    handler: teamController.getUserTeams.bind(teamController)
+    } catch (error) {
+      console.error('Error finding team owner:', error);
+    }
+    
+    return team;
+  };
+
+  // Format team arrays before sending
+  const formatTeamsArray = async (teams: any[], db: any) => {
+    return Promise.all(teams.map(team => formatTeamResponse(team, db)));
+  };
+
+  // Helper function to format invitation responses
+  const formatInvitationResponse = (invitation: any) => {
+    if (!invitation) return invitation;
+    return invitation;
+  };
+
+  // Format invitation arrays before sending
+  const formatInvitationsArray = (invitations: any[]) => {
+    return invitations.map(invitation => formatInvitationResponse(invitation));
+  };
+
+  /**
+   * GET /teams
+   * Get all teams for the current user
+   */
+  fastify.get('/', async (request, reply) => {
+    const controller = new TeamController();
+    const response = await controller.getUserTeams(request, reply);
+    
+    // If the response has already been sent, return it as is
+    if (reply.sent) return response;
+    
+    // Format the teams before sending if it's an array
+    if (Array.isArray(response)) {
+      const formattedTeams = await formatTeamsArray(response, fastify.db);
+      return reply.send(formattedTeams);
+    }
+    
+    return response;
   });
 
-  // Create a new team
+  /**
+   * POST /teams
+   * Create a new team
+   */
   fastify.post('/', {
     schema: {
       tags: ['teams'],
@@ -89,40 +122,38 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         }
       }
     },
-    handler: teamController.createTeam.bind(teamController)
+  }, async (request, reply) => {
+    const response = await teamController.createTeam(request, reply);
+    
+    // If the response has already been sent, return it as is
+    if (reply.sent) return response;
+    
+    // Format the team response
+    if (response && !Array.isArray(response)) {
+      const formattedTeam = await formatTeamResponse(response, fastify.db);
+      return reply.send(formattedTeam);
+    }
+    
+    return response;
   });
 
-  // Get a single team by ID
-  fastify.get('/:id', {
-    schema: {
-      tags: ['teams'],
-      summary: 'Get a team by ID',
-      params: {
-        type: 'object',
-        required: ['id'],
-        properties: {
-          id: { type: 'string', format: 'uuid' }
-        }
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            name: { type: 'string' },
-            slug: { type: 'string' },
-            description: { type: 'string' },
-            logoUrl: { type: 'string' },
-            isPersonal: { type: 'boolean' },
-            subscriptionTier: { type: 'string' },
-            maxMembers: { type: 'number' },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' },
-          }
-        }
-      }
-    },
-    handler: teamController.getTeamById.bind(teamController)
+  /**
+   * GET /teams/:id
+   * Get a team by ID
+   */
+  fastify.get('/:id', async (request, reply) => {
+    const response = await teamController.getTeamById(request, reply);
+    
+    // If the response has already been sent, return it as is
+    if (reply.sent) return response;
+    
+    // Format the team response
+    if (response && !Array.isArray(response)) {
+      const formattedTeam = await formatTeamResponse(response, fastify.db);
+      return reply.send(formattedTeam);
+    }
+    
+    return response;
   });
 
   // Update a team
@@ -281,11 +312,12 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
     handler: teamController.removeMember.bind(teamController)
   });
 
-  // Create team invitation
+  /**
+   * POST /teams/:id/invitations
+   * Invite a user to a team
+   */
   fastify.post('/:id/invitations', {
     schema: {
-      tags: ['teams'],
-      summary: 'Create an invitation to join a team',
       params: {
         type: 'object',
         required: ['id'],
@@ -295,63 +327,37 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
       },
       body: {
         type: 'object',
-        required: ['email', 'role'],
+        required: ['email'],
         properties: {
           email: { type: 'string', format: 'email' },
           role: { type: 'string', enum: ['owner', 'admin', 'member'] }
         }
-      },
-      response: {
-        201: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            teamId: { type: 'string' },
-            email: { type: 'string' },
-            role: { type: 'string', enum: ['owner', 'admin', 'member'] },
-            token: { type: 'string' },
-            createdBy: { type: 'string' },
-            expiresAt: { type: 'string', format: 'date-time' },
-            createdAt: { type: 'string', format: 'date-time' },
-          }
-        }
       }
-    },
-    handler: teamController.inviteToTeam.bind(teamController)
+    }
+  }, async (request, reply) => {
+    const controller = new TeamController();
+    // Just use the original controller without any formatting
+    return controller.inviteToTeam(request, reply);
   });
 
-  // Get team invitations
+  /**
+   * GET /teams/:id/invitations
+   * Get all pending invitations for a team
+   */
   fastify.get('/:id/invitations', {
     schema: {
-      tags: ['teams'],
-      summary: 'Get all pending invitations for a team',
       params: {
         type: 'object',
         required: ['id'],
         properties: {
           id: { type: 'string', format: 'uuid' }
         }
-      },
-      response: {
-        200: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              teamId: { type: 'string' },
-              email: { type: 'string' },
-              role: { type: 'string', enum: ['owner', 'admin', 'member'] },
-              token: { type: 'string' },
-              createdBy: { type: 'string' },
-              expiresAt: { type: 'string', format: 'date-time' },
-              createdAt: { type: 'string', format: 'date-time' },
-            }
-          }
-        }
       }
-    },
-    handler: teamController.getTeamInvitations.bind(teamController)
+    }
+  }, async (request, reply) => {
+    const controller = new TeamController();
+    // Just use the original controller without any formatting
+    return controller.getTeamInvitations(request, reply);
   });
 
   // Delete an invitation

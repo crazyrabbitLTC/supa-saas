@@ -42,9 +42,9 @@ describe('Teams Endpoints', () => {
     }
   });
 
-  describe('GET /teams', () => {
+  describe('GET /api/v1/teams', () => {
     it('should return 401 if not authenticated', async () => {
-      const response = await testContext.request.get('/teams');
+      const response = await testContext.request.get('/api/v1/teams');
       expect(response.status).toBe(401);
     });
 
@@ -52,7 +52,7 @@ describe('Teams Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(testContext.testUser!.id);
       
       const response = await testContext.request
-        .get('/teams')
+        .get('/api/v1/teams')
         .set(authHeader);
       
       expect(response.status).toBe(200);
@@ -70,7 +70,7 @@ describe('Teams Endpoints', () => {
       });
       
       const response = await testContext.request
-        .get('/teams')
+        .get('/api/v1/teams')
         .set(authHeader);
       
       expect(response.status).toBe(200);
@@ -82,10 +82,10 @@ describe('Teams Endpoints', () => {
     });
   });
 
-  describe('POST /teams', () => {
+  describe('POST /api/v1/teams', () => {
     it('should return 401 if not authenticated', async () => {
       const response = await testContext.request
-        .post('/teams')
+        .post('/api/v1/teams')
         .send({ name: 'New Team' });
       
       expect(response.status).toBe(401);
@@ -97,7 +97,7 @@ describe('Teams Endpoints', () => {
       const teamName = `New Team ${Date.now()}`;
       
       const response = await testContext.request
-        .post('/teams')
+        .post('/api/v1/teams')
         .set(authHeader)
         .send({ name: teamName });
       
@@ -111,7 +111,7 @@ describe('Teams Endpoints', () => {
       
       // Verify team was created in database
       const teamsResponse = await testContext.request
-        .get('/teams')
+        .get('/api/v1/teams')
         .set(authHeader);
       
       expect(teamsResponse.body.some((team: any) => team.id === response.body.id)).toBe(true);
@@ -128,7 +128,7 @@ describe('Teams Endpoints', () => {
       };
       
       const response = await testContext.request
-        .post('/teams')
+        .post('/api/v1/teams')
         .set(authHeader)
         .send(teamData);
       
@@ -146,7 +146,7 @@ describe('Teams Endpoints', () => {
       
       // Missing required name field
       const response = await testContext.request
-        .post('/teams')
+        .post('/api/v1/teams')
         .set(authHeader)
         .send({});
       
@@ -155,10 +155,10 @@ describe('Teams Endpoints', () => {
     });
   });
 
-  describe('GET /teams/:id', () => {
+  describe('GET /api/v1/teams/:id', () => {
     it('should return 401 if not authenticated', async () => {
       const fakeTeamId = uuidv4();
-      const response = await testContext.request.get(`/teams/${fakeTeamId}`);
+      const response = await testContext.request.get(`/api/v1/teams/${fakeTeamId}`);
       expect(response.status).toBe(401);
     });
 
@@ -168,7 +168,7 @@ describe('Teams Endpoints', () => {
       const nonExistentTeamId = uuidv4();
       
       const response = await testContext.request
-        .get(`/teams/${nonExistentTeamId}`)
+        .get(`/api/v1/teams/${nonExistentTeamId}`)
         .set(authHeader);
       
       expect(response.status).toBe(404);
@@ -182,7 +182,7 @@ describe('Teams Endpoints', () => {
       const team = await testContext.auth.createTestTeam(userId);
       
       const response = await testContext.request
-        .get(`/teams/${team.id}`)
+        .get(`/api/v1/teams/${team.id}`)
         .set(authHeader);
       
       expect(response.status).toBe(200);
@@ -203,18 +203,18 @@ describe('Teams Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(user2.id);
       
       const response = await testContext.request
-        .get(`/teams/${team.id}`)
+        .get(`/api/v1/teams/${team.id}`)
         .set(authHeader);
       
       expect(response.status).toBe(403);
     });
   });
 
-  describe('PUT /teams/:id', () => {
+  describe('PUT /api/v1/teams/:id', () => {
     it('should return 401 if not authenticated', async () => {
       const fakeTeamId = uuidv4();
       const response = await testContext.request
-        .put(`/teams/${fakeTeamId}`)
+        .put(`/api/v1/teams/${fakeTeamId}`)
         .send({ name: 'Updated Team' });
       
       expect(response.status).toBe(401);
@@ -234,7 +234,7 @@ describe('Teams Endpoints', () => {
       };
       
       const response = await testContext.request
-        .put(`/teams/${team.id}`)
+        .put(`/api/v1/teams/${team.id}`)
         .set(authHeader)
         .send(updatedData);
       
@@ -260,7 +260,7 @@ describe('Teams Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(memberUser.id);
       
       const response = await testContext.request
-        .put(`/teams/${team.id}`)
+        .put(`/api/v1/teams/${team.id}`)
         .set(authHeader)
         .send({ name: 'Unauthorized Update' });
       
@@ -286,7 +286,7 @@ describe('Teams Endpoints', () => {
       };
       
       const response = await testContext.request
-        .put(`/teams/${team.id}`)
+        .put(`/api/v1/teams/${team.id}`)
         .set(authHeader)
         .send(updatedData);
       
@@ -295,10 +295,10 @@ describe('Teams Endpoints', () => {
     });
   });
 
-  describe('DELETE /teams/:id', () => {
+  describe('DELETE /api/v1/teams/:id', () => {
     it('should return 401 if not authenticated', async () => {
       const fakeTeamId = uuidv4();
-      const response = await testContext.request.delete(`/teams/${fakeTeamId}`);
+      const response = await testContext.request.delete(`/api/v1/teams/${fakeTeamId}`);
       expect(response.status).toBe(401);
     });
 
@@ -310,15 +310,14 @@ describe('Teams Endpoints', () => {
       const team = await testContext.auth.createTestTeam(userId, { isPersonal: false });
       
       const response = await testContext.request
-        .delete(`/teams/${team.id}`)
+        .delete(`/api/v1/teams/${team.id}`)
         .set(authHeader);
       
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
+      expect(response.status).toBe(204);
       
-      // Verify team was deleted
+      // Verify the team is deleted
       const getResponse = await testContext.request
-        .get(`/teams/${team.id}`)
+        .get(`/api/v1/teams/${team.id}`)
         .set(authHeader);
       
       expect(getResponse.status).toBe(404);
@@ -339,7 +338,7 @@ describe('Teams Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(memberUser.id);
       
       const response = await testContext.request
-        .delete(`/teams/${team.id}`)
+        .delete(`/api/v1/teams/${team.id}`)
         .set(authHeader);
       
       expect(response.status).toBe(403);
@@ -353,7 +352,7 @@ describe('Teams Endpoints', () => {
       const team = await testContext.auth.createTestTeam(userId, { isPersonal: true });
       
       const response = await testContext.request
-        .delete(`/teams/${team.id}`)
+        .delete(`/api/v1/teams/${team.id}`)
         .set(authHeader);
       
       expect(response.status).toBe(400);
@@ -362,10 +361,10 @@ describe('Teams Endpoints', () => {
     });
   });
 
-  describe('GET /teams/:id/members', () => {
+  describe('GET /api/v1/teams/:id/members', () => {
     it('should return 401 if not authenticated', async () => {
       const fakeTeamId = uuidv4();
-      const response = await testContext.request.get(`/teams/${fakeTeamId}/members`);
+      const response = await testContext.request.get(`/api/v1/teams/${fakeTeamId}/members`);
       expect(response.status).toBe(401);
     });
 
@@ -381,7 +380,7 @@ describe('Teams Endpoints', () => {
       await testContext.auth.addTeamMember(team.id, member.id, 'member');
       
       const response = await testContext.request
-        .get(`/teams/${team.id}/members`)
+        .get(`/api/v1/teams/${team.id}/members`)
         .set(authHeader);
       
       expect(response.status).toBe(200);
@@ -411,18 +410,18 @@ describe('Teams Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(nonMemberUser.id);
       
       const response = await testContext.request
-        .get(`/teams/${team.id}/members`)
+        .get(`/api/v1/teams/${team.id}/members`)
         .set(authHeader);
       
       expect(response.status).toBe(403);
     });
   });
 
-  describe('POST /teams/:id/invitations', () => {
+  describe('POST /api/v1/teams/:id/invitations', () => {
     it('should return 401 if not authenticated', async () => {
       const fakeTeamId = uuidv4();
       const response = await testContext.request
-        .post(`/teams/${fakeTeamId}/invitations`)
+        .post(`/api/v1/teams/${fakeTeamId}/invitations`)
         .send({ email: 'test@example.com', role: 'member' });
       
       expect(response.status).toBe(401);
@@ -438,7 +437,7 @@ describe('Teams Endpoints', () => {
       const inviteEmail = `invite-${Date.now()}@example.com`;
       
       const response = await testContext.request
-        .post(`/teams/${team.id}/invitations`)
+        .post(`/api/v1/teams/${team.id}/invitations`)
         .set(authHeader)
         .send({ email: inviteEmail, role: 'member' });
       
@@ -447,7 +446,9 @@ describe('Teams Endpoints', () => {
       expect(response.body).toHaveProperty('teamId', team.id);
       expect(response.body).toHaveProperty('email', inviteEmail);
       expect(response.body).toHaveProperty('role', 'member');
-      expect(response.body).toHaveProperty('invitedBy', userId);
+      // Check for createdBy field
+      expect(response.body).toHaveProperty('createdBy');
+      expect(response.body.createdBy).toBe(userId);
       expect(response.body).toHaveProperty('token');
     });
 
@@ -466,7 +467,7 @@ describe('Teams Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(memberUser.id);
       
       const response = await testContext.request
-        .post(`/teams/${team.id}/invitations`)
+        .post(`/api/v1/teams/${team.id}/invitations`)
         .set(authHeader)
         .send({ email: 'test@example.com', role: 'member' });
       
@@ -490,20 +491,22 @@ describe('Teams Endpoints', () => {
       const inviteEmail = `admin-invite-${Date.now()}@example.com`;
       
       const response = await testContext.request
-        .post(`/teams/${team.id}/invitations`)
+        .post(`/api/v1/teams/${team.id}/invitations`)
         .set(authHeader)
         .send({ email: inviteEmail, role: 'member' });
       
       expect(response.status).toBe(201);
       expect(response.body).toHaveProperty('email', inviteEmail);
-      expect(response.body).toHaveProperty('invitedBy', adminUser.id);
+      // Check for createdBy field
+      expect(response.body).toHaveProperty('createdBy');
+      expect(response.body.createdBy).toBe(adminUser.id);
     });
   });
 
-  describe('GET /teams/:id/invitations', () => {
+  describe('GET /api/v1/teams/:id/invitations', () => {
     it('should return 401 if not authenticated', async () => {
       const fakeTeamId = uuidv4();
-      const response = await testContext.request.get(`/teams/${fakeTeamId}/invitations`);
+      const response = await testContext.request.get(`/api/v1/teams/${fakeTeamId}/invitations`);
       expect(response.status).toBe(401);
     });
 
@@ -522,7 +525,7 @@ describe('Teams Endpoints', () => {
       await testContext.auth.createTeamInvitation(team.id, inviteEmail2, userId);
       
       const response = await testContext.request
-        .get(`/teams/${team.id}/invitations`)
+        .get(`/api/v1/teams/${team.id}/invitations`)
         .set(authHeader);
       
       expect(response.status).toBe(200);
@@ -547,16 +550,16 @@ describe('Teams Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(nonMemberUser.id);
       
       const response = await testContext.request
-        .get(`/teams/${team.id}/invitations`)
+        .get(`/api/v1/teams/${team.id}/invitations`)
         .set(authHeader);
       
       expect(response.status).toBe(403);
     });
   });
 
-  describe('GET /teams/subscription-tiers', () => {
+  describe('GET /api/v1/teams/subscription-tiers', () => {
     it('should return 401 if not authenticated', async () => {
-      const response = await testContext.request.get('/teams/subscription-tiers');
+      const response = await testContext.request.get('/api/v1/teams/subscription-tiers');
       expect(response.status).toBe(401);
     });
 
@@ -565,7 +568,7 @@ describe('Teams Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(userId);
       
       const response = await testContext.request
-        .get('/teams/subscription-tiers')
+        .get('/api/v1/teams/subscription-tiers')
         .set(authHeader);
       
       expect(response.status).toBe(200);

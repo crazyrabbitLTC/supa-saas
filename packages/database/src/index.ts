@@ -1,26 +1,30 @@
 /**
  * @file Database Package Entry Point
- * @version 0.1.0
+ * @version 0.2.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-01-01
  * 
  * Main entry point for the database package.
  * 
  * IMPORTANT:
- * - Import this package to access database functionality
- * - Use the appropriate client for your use case
+ * - Import from this file rather than individual files
+ * - This ensures consistent usage across the codebase
  * 
  * Functionality:
- * - Exports database clients
- * - Exports schema definitions
- * - Exports type definitions
+ * - Exports Supabase clients
+ * - Exports database types
+ * - Exports database services
  */
 
-// Export database clients
-export * from './client';
-
-// Export schema
-export * from './schema';
+// Export Supabase clients
+export {
+  supabaseClient,
+  supabaseAdmin,
+  executeRawQuery,
+} from './client';
 
 // Export types
-export * from './types/supabase'; 
+export * from './types';
+
+// Export services
+export * from './services'; 

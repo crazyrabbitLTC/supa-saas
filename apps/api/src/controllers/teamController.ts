@@ -1,6 +1,6 @@
 /**
  * @file Team Controller
- * @version 0.1.0
+ * @version 0.2.0
  * @status DRAFT
  * @lastModified 2023-05-11
  * 
@@ -19,8 +19,7 @@
 
 import { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { teamService } from 'database/src/services/teamService';
-import { TeamRole, SubscriptionTier } from 'database/src/schema/teams';
+import { teamService, TeamRole, SubscriptionTier } from 'database';
 
 // Request body schemas
 const createTeamSchema = z.object({
@@ -254,7 +253,7 @@ export class TeamController {
         teamId: id,
         email,
         role,
-        invitedBy: userId,
+        createdBy: userId,
       });
 
       if (!invitation) {

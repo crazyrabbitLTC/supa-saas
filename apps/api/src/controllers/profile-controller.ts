@@ -1,6 +1,6 @@
 /**
  * @file Profile Controller
- * @version 0.1.0
+ * @version 0.2.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-01-01
  * 
@@ -16,8 +16,7 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { db, profiles, type Profile, executeRawQuery } from 'database';
-import { eq } from 'drizzle-orm';
+import { profileService, type Profile } from 'database';
 
 /**
  * Profile controller with methods for profile operations
@@ -31,13 +30,7 @@ export const profileController = {
    */
   async getProfileById(fastify: FastifyInstance, id: string): Promise<Profile | null> {
     try {
-      const result = await db
-        .select()
-        .from(profiles)
-        .where(eq(profiles.id, id))
-        .limit(1);
-      
-      return result[0] || null;
+      return await profileService.getProfileById(id);
     } catch (error) {
       fastify.log.error(error, `Error getting profile with ID ${id}`);
       throw error;
@@ -64,16 +57,10 @@ export const profileController = {
       }
       
       // Update profile
-      const result = await db
-        .update(profiles)
-        .set({
-          ...data,
-          updatedAt: new Date(),
-        })
-        .where(eq(profiles.id, id))
-        .returning();
-      
-      return result[0] || null;
+      return await profileService.updateProfile({
+        id,
+        ...data,
+      });
     } catch (error) {
       fastify.log.error(error, `Error updating profile with ID ${id}`);
       throw error;

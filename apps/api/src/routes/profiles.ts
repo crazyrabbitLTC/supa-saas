@@ -1,6 +1,6 @@
 /**
  * @file Profile Routes
- * @version 0.1.0
+ * @version 0.2.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-01-01
  * 
@@ -18,8 +18,7 @@
 
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { profiles } from 'database';
-import { eq } from 'drizzle-orm';
+import { profileService } from 'database';
 import { profileController } from '../controllers/profile-controller';
 
 // Schema for profile parameters
@@ -73,18 +72,39 @@ export const profileRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   );
   
   // Get current user's profile
-  fastify.get('/me', async (request, reply) => {
-    // This would normally check the authentication token
-    // For now, we'll return a 401 as a placeholder
-    return reply.status(401).send({
-      statusCode: 401,
-      error: 'Unauthorized',
-      message: 'Authentication required',
-    });
-    
-    // Once authentication is implemented:
-    // const userId = request.user.id;
-    // return profileController.getProfileById(fastify, userId);
+  fastify.get('/me', {
+    onRequest: fastify.authenticate,
+  }, async (request, reply) => {
+    try {
+      const userId = request.user.id;
+      
+      // Get profile from database
+      const profile = await profileController.getProfileById(fastify, userId);
+      
+      if (!profile) {
+        // If profile doesn't exist, create a new one
+        const newProfile = {
+          id: userId,
+          username: `user-${userId.substring(0, 8)}`,
+          fullName: '',
+          avatarUrl: '',
+          website: '',
+        };
+        
+        // Create the new profile using the profile service
+        const createdProfile = await profileService.createProfile(newProfile);
+        return createdProfile;
+      }
+      
+      return profile;
+    } catch (error) {
+      request.log.error(error, 'Error getting current user profile');
+      return reply.status(500).send({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: 'Failed to get profile',
+      });
+    }
   });
   
   // Update profile
@@ -94,6 +114,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
   }>(
     '/:id',
     {
+      onRequest: fastify.authenticate,
       schema: {
         params: {
           type: 'object',
@@ -116,17 +137,29 @@ export const profileRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
     async (request, reply) => {
       const { id } = request.params;
       const updateData = request.body;
+      const userId = request.user.id;
       
-      // This would normally check authorization
-      // For now, we'll return a 401 as a placeholder
-      return reply.status(401).send({
-        statusCode: 401,
-        error: 'Unauthorized',
-        message: 'Authentication required',
-      });
+      // Check if user is updating their own profile
+      if (id !== userId) {
+        return reply.status(403).send({
+          statusCode: 403,
+          error: 'Forbidden',
+          message: 'You can only update your own profile',
+        });
+      }
       
-      // Once authentication is implemented:
-      // return profileController.updateProfile(fastify, id, updateData);
+      // Update profile
+      const updatedProfile = await profileController.updateProfile(fastify, id, updateData);
+      
+      if (!updatedProfile) {
+        return reply.status(404).send({
+          statusCode: 404,
+          error: 'Not Found',
+          message: 'Profile not found',
+        });
+      }
+      
+      return updatedProfile;
     }
   );
 }; 

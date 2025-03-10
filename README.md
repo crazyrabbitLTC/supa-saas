@@ -8,7 +8,7 @@ A comprehensive monorepo boilerplate for SaaS applications built with Supabase, 
 - **Supabase Integration**: Full integration with Supabase for auth, database, storage, and realtime features
 - **TypeScript**: End-to-end type safety across all packages and applications
 - **Modular Architecture**: Clear separation between frontend, API, and background services
-- **Database Management**: Drizzle ORM for type-safe database access with migration support
+- **Database Management**: Type-safe database access with Supabase client and migrations
 - **Local Development**: Seamless local development with Supabase CLI
 - **Testing**: Comprehensive testing setup with Vitest for all components
 
@@ -21,7 +21,7 @@ saas-supabase-boilerplate/
 │   ├── api/                      # High-volume API service
 │   └── services/                 # Background services and jobs
 ├── packages/
-│   ├── database/                 # Database schema and client
+│   ├── database/                 # Database types and services
 │   ├── config/                   # Shared configuration
 │   └── tsconfig/                 # Shared TypeScript configs
 ├── scripts/                      # Utility scripts
@@ -151,7 +151,6 @@ pnpm build
 - **Turborepo**: For monorepo management
 - **pnpm**: For efficient package management
 - **Supabase**: For auth, database, storage, and realtime features
-- **Drizzle ORM**: For type-safe database access
 - **Fastify**: For high-performance API
 - **Next.js**: For frontend (placeholder)
 - **Vitest**: For testing

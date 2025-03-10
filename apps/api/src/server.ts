@@ -22,6 +22,7 @@ import helmet from '@fastify/helmet';
 import { logger } from './utils/logger';
 import { registerRoutes } from './routes';
 import { databasePlugin } from './plugins/database';
+import { authPlugin } from './plugins/auth';
 import { errorHandler } from './middleware/error-handler';
 
 /**
@@ -60,6 +61,9 @@ async function registerPlugins(server: FastifyInstance): Promise<void> {
   
   // Database plugin
   await server.register(databasePlugin);
+  
+  // Authentication plugin
+  await server.register(authPlugin);
   
   // Add more plugins here
 } 

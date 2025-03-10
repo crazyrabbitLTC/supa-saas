@@ -106,7 +106,7 @@ export function createTestInvitation(
   teamId: string, 
   email: string, 
   role: keyof typeof TeamRole = 'MEMBER',
-  invitedBy: string = testUsers.owner.id
+  createdBy: string = testUsers.owner.id
 ) {
   return {
     id: uuidv4(),
@@ -114,7 +114,7 @@ export function createTestInvitation(
     email,
     role: TeamRole[role],
     token: uuidv4(),
-    invitedBy,
+    createdBy,
     createdAt: new Date(),
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
   };

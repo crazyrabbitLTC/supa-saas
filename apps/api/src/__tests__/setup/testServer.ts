@@ -97,9 +97,6 @@ export async function initTestServer(): Promise<{
         return JSON.stringify(transformedTeam);
       } else if (data && data.email && data.role && data.token) {
         // This is likely an invitation
-        if (data.createdBy && !data.invitedBy) {
-          data.invitedBy = data.createdBy;
-        }
         return JSON.stringify(data);
       }
       

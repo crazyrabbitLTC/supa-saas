@@ -1,10 +1,10 @@
 /**
  * @file Team Service
- * @version 0.1.0
- * @status DRAFT
+ * @version 0.2.0
+ * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-05-11
  * 
- * Service for managing teams, team members, and team invitations.
+ * Service for managing teams, team members, and team invitations using Supabase.
  * 
  * IMPORTANT:
  * - All operations respect RLS policies through the Supabase client
@@ -17,13 +17,15 @@
  * - Subscription management
  */
 
-import { and, eq, inArray } from 'drizzle-orm';
-import { supabaseAdmin, db } from '../client';
-import {
-  teams, teamMembers, teamInvitations, subscriptionTiers,
-  Team, NewTeam, TeamMember, NewTeamMember, TeamInvitation, NewTeamInvitation,
-  TeamRole, SubscriptionTier
-} from '../schema/teams';
+import { v4 as uuidv4 } from 'uuid';
+import { supabaseAdmin, supabaseClient } from '../client';
+import { 
+  Team, TeamMember, TeamInvitation, SubscriptionTierRecord,
+  TeamRole, SubscriptionTier,
+  NewTeam, NewTeamMember, NewTeamInvitation,
+  TeamRow, TeamMemberRow, TeamInvitationRow,
+  snakeToCamel, camelToSnake
+} from '../types';
 
 interface CreateTeamParams {
   name: string;
@@ -45,7 +47,7 @@ interface InviteToTeamParams {
   teamId: string;
   email: string;
   role: TeamRole;
-  invitedBy: string;
+  createdBy: string;
 }
 
 interface AddTeamMemberParams {
@@ -79,116 +81,176 @@ class TeamService {
     // Generate a slug if not provided
     const teamSlug = slug || this.generateSlug(name);
     
-    // Start a transaction to create team and add owner
-    return await db.transaction(async (tx) => {
-      // Create the team
-      const [newTeam] = await tx
-        .insert(teams)
-        .values({
-          name,
-          slug: teamSlug,
-          description,
-          logoUrl,
-          isPersonal: false,
-          subscriptionTier: SubscriptionTier.FREE,
-        })
-        .returning();
-      
-      // Add creator as team owner
-      await tx
-        .insert(teamMembers)
-        .values({
-          teamId: newTeam.id,
-          userId,
-          role: TeamRole.OWNER,
-        });
-      
-      return newTeam;
-    });
+    // Create the team
+    const { data: team, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .insert({
+        name,
+        slug: teamSlug,
+        description,
+        logo_url: logoUrl,
+        is_personal: false,
+        subscription_tier: SubscriptionTier.FREE,
+      })
+      .select()
+      .single();
+    
+    if (teamError) {
+      throw new Error(`Failed to create team: ${teamError.message}`);
+    }
+    
+    // Add creator as team owner
+    const { error: memberError } = await supabaseAdmin
+      .from('team_members')
+      .insert({
+        team_id: team.id,
+        user_id: userId,
+        role: TeamRole.OWNER,
+      });
+    
+    if (memberError) {
+      // Rollback team creation
+      await supabaseAdmin.from('teams').delete().eq('id', team.id);
+      throw new Error(`Failed to add team owner: ${memberError.message}`);
+    }
+    
+    return snakeToCamel(team) as Team;
   }
 
   /**
    * Get a team by ID
    */
   async getTeamById(id: string): Promise<Team | null> {
-    const [team] = await db
-      .select()
-      .from(teams)
-      .where(eq(teams.id, id))
-      .limit(1);
+    const { data, error } = await supabaseClient
+      .from('teams')
+      .select('*')
+      .eq('id', id)
+      .single();
     
-    return team || null;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null; // Not found
+      }
+      throw new Error(`Failed to get team: ${error.message}`);
+    }
+    
+    return snakeToCamel(data) as Team;
   }
 
   /**
    * Get a team by slug
    */
   async getTeamBySlug(slug: string): Promise<Team | null> {
-    const [team] = await db
-      .select()
-      .from(teams)
-      .where(eq(teams.slug, slug))
-      .limit(1);
+    const { data, error } = await supabaseClient
+      .from('teams')
+      .select('*')
+      .eq('slug', slug)
+      .single();
     
-    return team || null;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null; // Not found
+      }
+      throw new Error(`Failed to get team by slug: ${error.message}`);
+    }
+    
+    return snakeToCamel(data) as Team;
   }
 
   /**
    * Get all teams a user is a member of
    */
   async getUserTeams(userId: string): Promise<Team[]> {
-    const result = await db.execute(
-      db.select()
-        .from(teams)
-        .innerJoin(teamMembers, eq(teams.id, teamMembers.teamId))
-        .where(eq(teamMembers.userId, userId))
-    );
-
-    return result.map(row => row.teams);
+    const { data, error } = await supabaseClient
+      .from('teams')
+      .select('*, team_members!inner(*)')
+      .eq('team_members.user_id', userId);
+    
+    if (error) {
+      throw new Error(`Failed to get user teams: ${error.message}`);
+    }
+    
+    // Remove the team_members from the result
+    const teams = data.map(team => {
+      const { team_members, ...rest } = team;
+      return rest;
+    });
+    
+    return teams.map(team => snakeToCamel(team) as Team);
   }
 
   /**
    * Update a team's details
    */
   async updateTeam({ id, name, description, logoUrl, metadata }: UpdateTeamParams): Promise<Team | null> {
-    const [updatedTeam] = await db
-      .update(teams)
-      .set({
-        name,
-        description,
-        logoUrl,
-        metadata,
-        updatedAt: new Date(),
-      })
-      .where(eq(teams.id, id))
-      .returning();
+    const updates: Partial<TeamRow> = {};
     
-    return updatedTeam || null;
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (logoUrl !== undefined) updates.logo_url = logoUrl;
+    if (metadata !== undefined) updates.metadata = metadata;
+    
+    updates.updated_at = new Date().toISOString();
+    
+    const { data, error } = await supabaseClient
+      .from('teams')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      throw new Error(`Failed to update team: ${error.message}`);
+    }
+    
+    return snakeToCamel(data) as Team;
   }
 
   /**
    * Delete a team (non-personal teams only)
    */
   async deleteTeam(id: string): Promise<boolean> {
-    const [deletedTeam] = await db
-      .delete(teams)
-      .where(and(
-        eq(teams.id, id),
-        eq(teams.isPersonal, false)
-      ))
-      .returning({ id: teams.id });
+    // First check if it's a personal team
+    const { data: team, error: getError } = await supabaseClient
+      .from('teams')
+      .select('is_personal')
+      .eq('id', id)
+      .single();
     
-    return !!deletedTeam;
+    if (getError) {
+      throw new Error(`Failed to check team: ${getError.message}`);
+    }
+    
+    if (team.is_personal) {
+      throw new Error('Cannot delete personal teams');
+    }
+    
+    const { error } = await supabaseClient
+      .from('teams')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      throw new Error(`Failed to delete team: ${error.message}`);
+    }
+    
+    return true;
   }
 
   /**
    * Get all members of a team
    */
   async getTeamMembers(teamId: string): Promise<TeamMember[]> {
-    return await db
-      .select()
-      .from(teamMembers)
-      .where(eq(teamMembers.teamId, teamId));
+    const { data, error } = await supabaseClient
+      .from('team_members')
+      .select('*')
+      .eq('team_id', teamId);
+    
+    if (error) {
+      throw new Error(`Failed to get team members: ${error.message}`);
+    }
+    
+    return data.map(member => snakeToCamel(member) as TeamMember);
   }
 
   /**
@@ -196,17 +258,22 @@ class TeamService {
    */
   async addTeamMember({ teamId, userId, role }: AddTeamMemberParams): Promise<TeamMember | null> {
     try {
-      const [newMember] = await db
-        .insert(teamMembers)
-        .values({
-          teamId,
-          userId,
+      const { data, error } = await supabaseClient
+        .from('team_members')
+        .insert({
+          team_id: teamId,
+          user_id: userId,
           role,
         })
-        .returning();
+        .select()
+        .single();
       
-      return newMember || null;
-    } catch (error) {
+      if (error) {
+        throw new Error(`Failed to add team member: ${error.message}`);
+      }
+      
+      return snakeToCamel(data) as TeamMember;
+    } catch (error: any) {
       console.error('Error adding team member:', error);
       return null;
     }
@@ -216,204 +283,293 @@ class TeamService {
    * Update a team member's role
    */
   async updateTeamMember({ teamId, userId, role }: UpdateTeamMemberParams): Promise<TeamMember | null> {
-    const [updatedMember] = await db
-      .update(teamMembers)
-      .set({
+    const { data, error } = await supabaseClient
+      .from('team_members')
+      .update({
         role,
-        updatedAt: new Date(),
+        updated_at: new Date().toISOString(),
       })
-      .where(and(
-        eq(teamMembers.teamId, teamId),
-        eq(teamMembers.userId, userId)
-      ))
-      .returning();
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .select()
+      .single();
     
-    return updatedMember || null;
+    if (error) {
+      throw new Error(`Failed to update team member: ${error.message}`);
+    }
+    
+    return snakeToCamel(data) as TeamMember;
   }
 
   /**
    * Remove a member from a team
    */
   async removeTeamMember(teamId: string, userId: string): Promise<boolean> {
-    const [removedMember] = await db
-      .delete(teamMembers)
-      .where(and(
-        eq(teamMembers.teamId, teamId),
-        eq(teamMembers.userId, userId)
-      ))
-      .returning({ id: teamMembers.id });
+    // First check if this is the last owner
+    const { data: owners, error: checkError } = await supabaseClient
+      .from('team_members')
+      .select('*')
+      .eq('team_id', teamId)
+      .eq('role', TeamRole.OWNER);
     
-    return !!removedMember;
+    if (checkError) {
+      throw new Error(`Failed to check team owners: ${checkError.message}`);
+    }
+    
+    // If this is the last owner and we're trying to remove them, prevent it
+    if (owners.length === 1 && owners[0].user_id === userId && owners[0].role === TeamRole.OWNER) {
+      throw new Error('Cannot remove the last owner of a team');
+    }
+    
+    const { error } = await supabaseClient
+      .from('team_members')
+      .delete()
+      .eq('team_id', teamId)
+      .eq('user_id', userId);
+    
+    if (error) {
+      throw new Error(`Failed to remove team member: ${error.message}`);
+    }
+    
+    return true;
   }
 
   /**
    * Check if a user is a member of a team
    */
   async isTeamMember(teamId: string, userId: string): Promise<boolean> {
-    const [member] = await db
-      .select({ id: teamMembers.id })
-      .from(teamMembers)
-      .where(and(
-        eq(teamMembers.teamId, teamId),
-        eq(teamMembers.userId, userId)
-      ))
-      .limit(1);
+    const { data, error } = await supabaseClient
+      .from('team_members')
+      .select('id')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .single();
     
-    return !!member;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return false; // Not found
+      }
+      throw new Error(`Failed to check team membership: ${error.message}`);
+    }
+    
+    return !!data;
   }
 
   /**
    * Check if a user has a specific role in a team
    */
   async hasTeamRole(teamId: string, userId: string, role: TeamRole): Promise<boolean> {
-    const [member] = await db
-      .select({ role: teamMembers.role })
-      .from(teamMembers)
-      .where(and(
-        eq(teamMembers.teamId, teamId),
-        eq(teamMembers.userId, userId)
-      ))
-      .limit(1);
+    const { data, error } = await supabaseClient
+      .from('team_members')
+      .select('role')
+      .eq('team_id', teamId)
+      .eq('user_id', userId)
+      .single();
     
-    return member?.role === role;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return false; // Not found
+      }
+      throw new Error(`Failed to check team role: ${error.message}`);
+    }
+    
+    return data.role === role;
   }
 
   /**
    * Create an invitation to join a team
    */
-  async inviteToTeam({ teamId, email, role, invitedBy }: InviteToTeamParams): Promise<TeamInvitation | null> {
+  async inviteToTeam({ teamId, email, role, createdBy }: InviteToTeamParams): Promise<TeamInvitation | null> {
     try {
-      const [invitation] = await db
-        .insert(teamInvitations)
-        .values({
-          teamId,
+      const { data, error } = await supabaseClient
+        .from('team_invitations')
+        .insert({
+          team_id: teamId,
           email,
           role,
-          createdBy: invitedBy,
+          created_by: createdBy,
+          token: uuidv4(),
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
         })
-        .returning();
+        .select()
+        .single();
       
-      return invitation || null;
-    } catch (error) {
+      if (error) {
+        throw new Error(`Failed to create invitation: ${error.message}`);
+      }
+      
+      return snakeToCamel(data) as TeamInvitation;
+    } catch (error: any) {
       console.error('Error creating invitation:', error);
       return null;
     }
   }
 
   /**
-   * Get pending invitations for a team
+   * Get all invitations for a team
    */
   async getTeamInvitations(teamId: string): Promise<TeamInvitation[]> {
-    return await db
-      .select()
-      .from(teamInvitations)
-      .where(and(
-        eq(teamInvitations.teamId, teamId),
-        inArray(teamInvitations.expiresAt, new Date())
-      ));
+    const { data, error } = await supabaseClient
+      .from('team_invitations')
+      .select('*')
+      .eq('team_id', teamId);
+    
+    if (error) {
+      throw new Error(`Failed to get team invitations: ${error.message}`);
+    }
+    
+    return data.map(invitation => snakeToCamel(invitation) as TeamInvitation);
   }
 
   /**
-   * Get invitation by token
+   * Get an invitation by token
    */
   async getInvitationByToken(token: string): Promise<TeamInvitation | null> {
-    const [invitation] = await db
-      .select()
-      .from(teamInvitations)
-      .where(eq(teamInvitations.token, token))
-      .limit(1);
+    const { data, error } = await supabaseClient
+      .from('team_invitations')
+      .select('*')
+      .eq('token', token)
+      .single();
     
-    return invitation || null;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null; // Not found
+      }
+      throw new Error(`Failed to get invitation: ${error.message}`);
+    }
+    
+    return snakeToCamel(data) as TeamInvitation;
   }
 
   /**
-   * Accept a team invitation
+   * Accept an invitation and add the user to the team
    */
   async acceptInvitation({ token, userId }: AcceptInvitationParams): Promise<string | null> {
-    try {
-      // Use the database function directly
-      const { data, error } = await supabaseAdmin.rpc('accept_invitation', {
-        invitation_token: token,
-        accepting_user_id: userId
-      });
-      
-      if (error) {
-        console.error('Error accepting invitation:', error);
-        return null;
-      }
-      
-      return data; // Returns the team ID
-    } catch (error) {
-      console.error('Error accepting invitation:', error);
-      return null;
+    // Get the invitation
+    const { data: invitation, error: inviteError } = await supabaseClient
+      .from('team_invitations')
+      .select('*')
+      .eq('token', token)
+      .single();
+    
+    if (inviteError) {
+      throw new Error(`Failed to get invitation: ${inviteError.message}`);
     }
+    
+    // Check if invitation is expired
+    if (new Date(invitation.expires_at) < new Date()) {
+      throw new Error('Invitation has expired');
+    }
+    
+    // Add user to team
+    const { error: memberError } = await supabaseClient
+      .from('team_members')
+      .insert({
+        team_id: invitation.team_id,
+        user_id: userId,
+        role: invitation.role,
+      });
+    
+    if (memberError) {
+      throw new Error(`Failed to add team member: ${memberError.message}`);
+    }
+    
+    // Delete the invitation
+    const { error: deleteError } = await supabaseClient
+      .from('team_invitations')
+      .delete()
+      .eq('id', invitation.id);
+    
+    if (deleteError) {
+      console.error('Failed to delete invitation:', deleteError);
+      // Continue anyway, the user has been added to the team
+    }
+    
+    return invitation.team_id;
   }
 
   /**
    * Delete an invitation
    */
   async deleteInvitation(id: string): Promise<boolean> {
-    const [deletedInvitation] = await db
-      .delete(teamInvitations)
-      .where(eq(teamInvitations.id, id))
-      .returning({ id: teamInvitations.id });
+    const { error } = await supabaseClient
+      .from('team_invitations')
+      .delete()
+      .eq('id', id);
     
-    return !!deletedInvitation;
-  }
-
-  /**
-   * Update a team's subscription
-   */
-  async changeSubscription({ teamId, subscriptionTier, subscriptionId }: ChangeSubscriptionParams): Promise<Team | null> {
-    // Get the subscription tier details
-    const [tier] = await db
-      .select()
-      .from(subscriptionTiers)
-      .where(eq(subscriptionTiers.name, subscriptionTier))
-      .limit(1);
-    
-    if (!tier) {
-      return null;
+    if (error) {
+      throw new Error(`Failed to delete invitation: ${error.message}`);
     }
     
-    // Update the team's subscription
-    const [updatedTeam] = await db
-      .update(teams)
-      .set({
-        subscriptionTier,
-        subscriptionId,
-        maxMembers: tier.maxMembers,
-        updatedAt: new Date(),
-      })
-      .where(eq(teams.id, teamId))
-      .returning();
-    
-    return updatedTeam || null;
+    return true;
   }
 
   /**
-   * Get all available subscription tiers
+   * Change a team's subscription tier
    */
-  async getSubscriptionTiers(isTeamPlan: boolean = true): Promise<typeof subscriptionTiers.$inferSelect[]> {
-    return await db
+  async changeSubscription({ teamId, subscriptionTier, subscriptionId }: ChangeSubscriptionParams): Promise<Team | null> {
+    const updates: Partial<TeamRow> = {
+      subscription_tier: subscriptionTier,
+      updated_at: new Date().toISOString(),
+    };
+    
+    if (subscriptionId !== undefined) {
+      updates.subscription_id = subscriptionId;
+    }
+    
+    // Get the max members for this tier
+    const { data: tierData, error: tierError } = await supabaseClient
+      .from('subscription_tiers')
+      .select('max_members')
+      .eq('name', subscriptionTier)
+      .single();
+    
+    if (tierError) {
+      throw new Error(`Failed to get subscription tier: ${tierError.message}`);
+    }
+    
+    updates.max_members = tierData.max_members;
+    
+    const { data, error } = await supabaseClient
+      .from('teams')
+      .update(updates)
+      .eq('id', teamId)
       .select()
-      .from(subscriptionTiers)
-      .where(eq(subscriptionTiers.isTeamPlan, isTeamPlan))
-      .orderBy(subscriptionTiers.priceMonthly);
+      .single();
+    
+    if (error) {
+      throw new Error(`Failed to update subscription: ${error.message}`);
+    }
+    
+    return snakeToCamel(data) as Team;
   }
 
   /**
-   * Generate a URL-friendly slug from a team name
+   * Get all subscription tiers
+   */
+  async getSubscriptionTiers(isTeamPlan: boolean = true): Promise<SubscriptionTierRecord[]> {
+    const { data, error } = await supabaseClient
+      .from('subscription_tiers')
+      .select('*')
+      .eq('is_team_plan', isTeamPlan)
+      .order('price_monthly', { ascending: true });
+    
+    if (error) {
+      throw new Error(`Failed to get subscription tiers: ${error.message}`);
+    }
+    
+    return data.map(tier => snakeToCamel(tier) as SubscriptionTierRecord);
+  }
+
+  /**
+   * Generate a slug from a name
    */
   private generateSlug(name: string): string {
     return name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      + '-' 
-      + Math.random().toString(36).substring(2, 7);
+      .replace(/^-|-$/g, '');
   }
 }
 
-export const teamService = new TeamService();
-export default teamService; 
+export const teamService = new TeamService(); 

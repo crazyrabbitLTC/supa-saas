@@ -270,14 +270,14 @@ class TestDatabase {
   /**
    * Create a team invitation
    */
-  async createTeamInvitation(teamId: string, email: string, invitedBy: string, role: 'owner' | 'admin' | 'member' = 'member'): Promise<string> {
+  async createTeamInvitation(teamId: string, email: string, createdBy: string, role: 'owner' | 'admin' | 'member' = 'member'): Promise<string> {
     const { data, error } = await supabaseAdmin
       .from('team_invitations')
       .insert({
         team_id: teamId,
         email,
         role,
-        created_by: invitedBy,
+        created_by: createdBy,
         token: uuidv4()
       })
       .select()
