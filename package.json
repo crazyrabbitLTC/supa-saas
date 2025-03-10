@@ -17,6 +17,7 @@
     "test:ui": "turbo test:ui",
     "test:coverage": "turbo test:coverage",
     "test:teams": "./scripts/test-teams.sh",
+    "test:api:integration": "./scripts/test-api-integration.sh",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
