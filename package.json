@@ -14,7 +14,12 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "supabase:status": "supabase status"
+    "supabase:status": "supabase status",
+    "supabase:init": "./scripts/init-supabase.sh",
+    "supabase:migration:new": "supabase migration new",
+    "supabase:migration:up": "supabase db reset",
+    "supabase:studio": "supabase studio",
+    "supabase:gen:types": "supabase gen types typescript --local > packages/database/src/types/supabase.ts"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.19.0",
