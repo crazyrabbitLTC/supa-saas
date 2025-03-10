@@ -45,7 +45,13 @@ export const profileRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
     '/:id',
     {
       schema: {
-        params: profileParamsSchema,
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' }
+          },
+          required: ['id']
+        }
       },
     },
     async (request, reply) => {
@@ -89,8 +95,22 @@ export const profileRoutes: FastifyPluginAsync = async (fastify: FastifyInstance
     '/:id',
     {
       schema: {
-        params: profileParamsSchema,
-        body: profileUpdateSchema,
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' }
+          },
+          required: ['id']
+        },
+        body: {
+          type: 'object',
+          properties: {
+            username: { type: 'string', minLength: 3 },
+            fullName: { type: 'string' },
+            avatarUrl: { type: 'string', format: 'uri' },
+            website: { type: 'string', format: 'uri' }
+          }
+        }
       },
     },
     async (request, reply) => {

@@ -8,6 +8,12 @@ set -e
 
 echo "Testing all components..."
 
+# Load environment variables from .env file
+if [ -f .env ]; then
+  echo "Loading environment variables from .env file..."
+  export $(grep -v '^#' .env | xargs)
+fi
+
 # Check if Supabase is running
 if ! supabase status | grep -q "Started"; then
   echo "Supabase is not running. Starting Supabase..."
@@ -21,7 +27,7 @@ pnpm build
 # Test database connection
 echo "Testing database connection..."
 cd packages/database
-NODE_OPTIONS="--loader=tsx" node -e "
+NODE_OPTIONS="--import=tsx" node -e "
 const { db, executeRawQuery } = require('./src/index');
 async function testDb() {
   try {
@@ -40,7 +46,7 @@ cd ../..
 # Test Supabase connection
 echo "Testing Supabase connection..."
 cd packages/database
-NODE_OPTIONS="--loader=tsx" node -e "
+NODE_OPTIONS="--import=tsx" node -e "
 const { supabaseClient } = require('./src/index');
 async function testSupabase() {
   try {
@@ -60,7 +66,7 @@ cd ../..
 # Test API server
 echo "Testing API server..."
 cd apps/api
-NODE_OPTIONS="--loader=tsx" node -e "
+NODE_OPTIONS="--import=tsx" node -e "
 const { buildServer } = require('./src/server');
 async function testApi() {
   try {
@@ -83,7 +89,7 @@ cd ../..
 # Test background services
 echo "Testing background services..."
 cd apps/services
-NODE_OPTIONS="--loader=tsx" node -e "
+NODE_OPTIONS="--import=tsx" node -e "
 const { scheduleCronJobs } = require('./src/jobs');
 try {
   scheduleCronJobs();
