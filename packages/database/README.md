@@ -9,6 +9,31 @@ This package provides database access and type definitions for Supabase.
 - Conversion utilities for snake_case to camelCase
 - Service layer for database operations
 
+## Architecture
+
+This package follows a service-oriented architecture:
+
+- **Types**: Define the shape of data in both database and application formats
+- **Services**: Provide business logic and data access methods
+- **Client**: Manages connections to Supabase
+
+### Type System
+
+The type system handles the conversion between database (snake_case) and application (camelCase) formats:
+
+- `*Row` types: Represent database tables with snake_case fields
+- Regular types: Represent application data with camelCase properties
+- Conversion utilities: Transform between the two formats
+
+### Service Layer
+
+Each entity has its own service that provides:
+
+- CRUD operations
+- Business logic
+- Error handling
+- Type conversion
+
 ## Usage
 
 ### Importing the package
@@ -34,6 +59,26 @@ const profile = await profileService.getProfileById('user-id');
 const { data, error } = await supabaseClient
   .from('profiles')
   .select('*');
+```
+
+## Vector Search (Coming Soon)
+
+This package will soon support vector search capabilities using Supabase's pgvector integration:
+
+```typescript
+// Store embeddings
+await vectorService.storeEmbedding({
+  content: 'Document text',
+  embedding: [0.1, 0.2, ...], // Vector from embedding model
+  metadata: { source: 'document.pdf' }
+});
+
+// Search for similar content
+const results = await vectorService.searchSimilar({
+  embedding: [0.1, 0.2, ...],
+  limit: 5,
+  threshold: 0.8
+});
 ```
 
 ## Types

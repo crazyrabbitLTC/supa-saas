@@ -12,6 +12,30 @@ A comprehensive monorepo boilerplate for SaaS applications built with Supabase, 
 - **Local Development**: Seamless local development with Supabase CLI
 - **Testing**: Comprehensive testing setup with Vitest for all components
 
+## Supabase Integration
+
+This boilerplate is built around Supabase as the primary backend service:
+
+- **Authentication**: User management, social logins, and JWT-based authentication
+- **Database**: PostgreSQL database with type-safe access through the Supabase client
+- **Storage**: File storage with access control and transformations
+- **Realtime**: WebSocket-based realtime subscriptions for live updates
+- **Edge Functions**: Serverless functions for backend logic
+- **Vector Search**: Support for AI-powered search using pgvector (coming soon)
+
+For detailed information about the Supabase integration, see [SUPABASE_INTEGRATION.md](docs/SUPABASE_INTEGRATION.md).
+
+For details on the migration from Drizzle ORM to Supabase, see [MIGRATION_FROM_DRIZZLE.md](docs/MIGRATION_FROM_DRIZZLE.md).
+
+### Type-Safe Database Access
+
+The database package provides a service layer that:
+
+- Converts between snake_case (database) and camelCase (TypeScript)
+- Provides strongly-typed CRUD operations for all entities
+- Handles error cases and edge conditions
+- Respects Row Level Security (RLS) policies
+
 ## Project Structure
 
 ```
