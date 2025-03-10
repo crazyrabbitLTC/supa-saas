@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig/node.json",
+  "extends": "tsconfig/base.json",
   "include": [
     "src"
   ],
@@ -8,6 +8,10 @@
     "dist"
   ],
   "compilerOptions": {
-    "outDir": "dist"
+    "outDir": "dist",
+    "rootDir": "src",
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "ignoreDeprecations": "5.0"
   }
 }

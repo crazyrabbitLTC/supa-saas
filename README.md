@@ -27,6 +27,8 @@ For detailed information about the Supabase integration, see [SUPABASE_INTEGRATI
 
 For details on the migration from Drizzle ORM to Supabase, see [MIGRATION_FROM_DRIZZLE.md](docs/MIGRATION_FROM_DRIZZLE.md).
 
+For information about the type system, see [TYPE_SYSTEM.md](docs/TYPE_SYSTEM.md).
+
 ### Type-Safe Database Access
 
 The database package provides a service layer that:
@@ -80,6 +82,10 @@ saas-supabase-boilerplate/
    ```bash
    pnpm supabase:migration:up
    ```
+6. Generate database types:
+   ```bash
+   pnpm supabase:gen:types
+   ```
 
 ### Development
 
@@ -101,6 +107,20 @@ pnpm --filter web dev
 # Background services
 pnpm --filter services dev
 ```
+
+### Updating Database Types
+
+After making changes to your database schema, regenerate the TypeScript types:
+
+```bash
+# From local Supabase instance
+pnpm supabase:gen:types:local
+
+# From remote Supabase project
+pnpm supabase:gen:types:remote
+```
+
+This ensures type safety across your application by keeping the TypeScript types in sync with your database schema.
 
 ### Testing
 

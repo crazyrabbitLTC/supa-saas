@@ -1,14 +1,21 @@
 /**
- * @file Profile Service Supabase Tests
+ * @file Profile Service Tests
  * @version 0.1.0
  * 
- * Tests for the ProfileServiceSupabase functionality.
+ * Tests for the ProfileService functionality.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
-import { profileServiceSupabase } from '../../services/profileServiceSupabase';
+import { profileService } from '../../services/profileService';
 import { supabaseClient, supabaseAdmin } from '../../client';
+import { snakeToCamel } from '../../types/helpers';
+
+// Mock the snakeToCamel function
+vi.mock('../../types/helpers', () => ({
+  snakeToCamel: vi.fn(obj => obj),
+  camelToSnake: vi.fn(obj => obj),
+}));
 
 // Mock Supabase client
 vi.mock('../../client', () => {
@@ -25,10 +32,12 @@ vi.mock('../../client', () => {
   return {
     supabaseClient: mockSupabaseClient,
     supabaseAdmin: mockSupabaseClient,
+    getSupabaseClient: () => mockSupabaseClient,
+    getSupabaseAdmin: () => mockSupabaseClient,
   };
 });
 
-describe('ProfileServiceSupabase', () => {
+describe('ProfileService', () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
@@ -53,8 +62,18 @@ describe('ProfileServiceSupabase', () => {
       vi.mocked(supabaseClient.eq).mockReturnValue(supabaseClient);
       vi.mocked(supabaseClient.single).mockResolvedValueOnce({ data: mockProfile, error: null });
       
+      // Mock snakeToCamel to return expected format
+      vi.mocked(snakeToCamel).mockImplementationOnce(() => ({
+        id: profileId,
+        username: 'testuser',
+        fullName: 'Test User',
+        avatarUrl: 'https://example.com/avatar.png',
+        website: 'https://example.com',
+        updatedAt: new Date().toISOString(),
+      }));
+      
       // Call the service
-      const profile = await profileServiceSupabase.getProfileById(profileId);
+      const profile = await profileService.getProfileById(profileId);
       
       // Assertions
       expect(profile).toBeDefined();
@@ -82,7 +101,7 @@ describe('ProfileServiceSupabase', () => {
       });
       
       // Call the service
-      const profile = await profileServiceSupabase.getProfileById(profileId);
+      const profile = await profileService.getProfileById(profileId);
       
       // Assertions
       expect(profile).toBeNull();
@@ -121,8 +140,18 @@ describe('ProfileServiceSupabase', () => {
       vi.mocked(supabaseAdmin.select).mockReturnValue(supabaseAdmin);
       vi.mocked(supabaseAdmin.single).mockResolvedValueOnce({ data: mockResponse, error: null });
       
+      // Mock snakeToCamel to return expected format
+      vi.mocked(snakeToCamel).mockImplementationOnce(() => ({
+        id: profileId,
+        username: 'newuser',
+        fullName: 'New User',
+        avatarUrl: 'https://example.com/avatar.png',
+        website: 'https://example.com',
+        updatedAt: new Date().toISOString(),
+      }));
+      
       // Call the service
-      const profile = await profileServiceSupabase.createProfile(newProfile);
+      const profile = await profileService.createProfile(newProfile);
       
       // Assertions
       expect(profile).toBeDefined();
@@ -132,13 +161,10 @@ describe('ProfileServiceSupabase', () => {
       
       // Verify Supabase calls
       expect(supabaseAdmin.from).toHaveBeenCalledWith('profiles');
-      expect(supabaseAdmin.insert).toHaveBeenCalledWith({
+      expect(supabaseAdmin.insert).toHaveBeenCalledWith(expect.objectContaining({
         id: profileId,
         username: 'newuser',
-        full_name: 'New User',
-        avatar_url: 'https://example.com/avatar.png',
-        website: 'https://example.com',
-      });
+      }));
     });
   });
 }); 

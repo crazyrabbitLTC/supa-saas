@@ -1,66 +1,72 @@
 /**
- * @file Database Client
- * @version 0.2.0
+ * @file Supabase Client
+ * @version 1.0.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
- * @lastModified 2023-01-01
+ * @lastModified 2023-10-15
  * 
- * Provides database client instances for Supabase.
+ * This file provides typed Supabase clients for database access.
  * 
  * IMPORTANT:
- * - Use the appropriate client for your use case
- * - The Supabase admin client is for server-side operations
- * - The Supabase client is for client-side operations
- * 
- * Functionality:
- * - Creates and exports Supabase clients
- * - Provides typed query interfaces
+ * - Never expose the service role key in client-side code
+ * - The admin client should only be used in trusted server-side code
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Database } from './types/supabase';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import { Database } from './types';
 
-// DIAGNOSTIC: Log when database client is being initialized
-console.log('[DATABASE] Initializing database client module');
+// Load environment variables
+dotenv.config();
 
-// Get environment variables (with fallbacks)
+/**
+ * Get an environment variable with fallback
+ */
 const getEnvVar = (name: string, defaultValue: string = ''): string => {
-  const value = process.env[name] || defaultValue;
-  // Log for diagnostic purposes
-  console.log(`[DATABASE] Environment variable ${name}: ${value ? (name.includes('KEY') ? '[SET]' : value) : '[NOT SET]'}`);
+  const value = process.env[name];
+  if (!value) {
+    if (defaultValue) return defaultValue;
+    throw new Error(`Environment variable ${name} is not set`);
+  }
   return value;
 };
 
-// Create clients lazily to ensure environment variables are loaded
-let _supabaseAdmin: SupabaseClient<Database> | null = null;
-let _supabaseClient: SupabaseClient<Database> | null = null;
-
-// Lazy getters for clients
+/**
+ * Get a Supabase admin client with service role permissions
+ */
 export const getSupabaseAdmin = () => {
-  if (!_supabaseAdmin) {
-    console.log('[DATABASE] Creating Supabase admin client');
-    const SUPABASE_URL = getEnvVar('SUPABASE_URL', 'http://localhost:54321');
-    const SUPABASE_SERVICE_ROLE_KEY = getEnvVar('SUPABASE_SERVICE_ROLE_KEY');
-    _supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  }
-  return _supabaseAdmin;
+  const supabaseUrl = getEnvVar('SUPABASE_URL');
+  const supabaseServiceKey = getEnvVar('SUPABASE_SERVICE_ROLE_KEY');
+  
+  return createClient<Database>(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 };
 
+/**
+ * Get a Supabase client with anonymous permissions
+ */
 export const getSupabaseClient = () => {
-  if (!_supabaseClient) {
-    console.log('[DATABASE] Creating Supabase public client');
-    const SUPABASE_URL = getEnvVar('SUPABASE_URL', 'http://localhost:54321');
-    const SUPABASE_ANON_KEY = getEnvVar('SUPABASE_ANON_KEY');
-    _supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-  return _supabaseClient;
+  const supabaseUrl = getEnvVar('SUPABASE_URL');
+  const supabaseAnonKey = getEnvVar('SUPABASE_ANON_KEY');
+  
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 };
 
-// For backward compatibility
+// Export singleton instances
 export const supabaseAdmin = getSupabaseAdmin();
 export const supabaseClient = getSupabaseClient();
 
 // Export a function to execute raw SQL queries
 export const executeRawQuery = async (query: string, params: any[] = []) => {
+  // @ts-ignore - Supabase types don't include custom RPC functions
   const { data, error } = await supabaseAdmin.rpc('execute_sql', { sql_query: query, params });
   
   if (error) {
