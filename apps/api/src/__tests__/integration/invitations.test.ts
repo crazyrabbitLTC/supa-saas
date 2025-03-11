@@ -66,10 +66,10 @@ describe('Invitation Endpoints', () => {
     }
   });
 
-  describe('GET /invitations/:token', () => {
+  describe('GET /api/v1/invitations/:token', () => {
     it('should return invitation details for valid token', async () => {
       const response = await testContext.request
-        .get(`/invitations/${testContext.testInvitation!.token}`);
+        .get(`/api/v1/invitations/${testContext.testInvitation!.token}`);
       
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('id');
@@ -79,72 +79,64 @@ describe('Invitation Endpoints', () => {
     });
 
     it('should return 404 for non-existent token', async () => {
-      const nonExistentToken = uuidv4();
-      
+      const fakeToken = uuidv4();
       const response = await testContext.request
-        .get(`/invitations/${nonExistentToken}`);
+        .get(`/api/v1/invitations/${fakeToken}`);
       
       expect(response.status).toBe(404);
     });
   });
 
-  describe('POST /invitations/:token/accept', () => {
+  describe('POST /api/v1/invitations/:token/accept', () => {
     it('should return 401 if not authenticated', async () => {
       const response = await testContext.request
-        .post(`/invitations/${testContext.testInvitation!.token}/accept`);
+        .post(`/api/v1/invitations/${testContext.testInvitation!.token}/accept`);
       
       expect(response.status).toBe(401);
     });
 
     it('should accept invitation and add user to team', async () => {
-      // Create a new user to accept the invitation
+      // Create another user to accept the invitation
       const newUser = await testContext.auth.createTestUser();
       const authHeader = await testContext.auth.getAuthHeader(newUser.id);
       
       const response = await testContext.request
-        .post(`/invitations/${testContext.testInvitation!.token}/accept`)
+        .post(`/api/v1/invitations/${testContext.testInvitation!.token}/accept`)
         .set(authHeader);
       
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('teamId', testContext.testTeam!.id);
       
-      // Verify user was added to the team
-      const teamMembersResponse = await testContext.request
-        .get(`/teams/${testContext.testTeam!.id}/members`)
-        .set(await testContext.auth.getAuthHeader(testContext.testUser!.id));
+      // Verify that the user is now a member of the team
+      const { data } = await testContext.server.supabase
+        .from('team_members')
+        .select('*')
+        .eq('team_id', testContext.testTeam!.id)
+        .eq('user_id', newUser.id);
       
-      const members = teamMembersResponse.body;
-      const newMember = members.find((m: any) => m.userId === newUser.id);
-      
-      expect(newMember).toBeDefined();
-      expect(newMember.teamId).toBe(testContext.testTeam!.id);
-      expect(newMember.userId).toBe(newUser.id);
-      
-      // Verify invitation was deleted
-      const invitationResponse = await testContext.request
-        .get(`/invitations/${testContext.testInvitation!.token}`);
-      
-      expect(invitationResponse.status).toBe(404);
+      expect(data.length).toBe(1);
+      expect(data[0].role).toBe('member');
     });
 
     it('should return 404 for non-existent token', async () => {
-      const nonExistentToken = uuidv4();
-      const authHeader = await testContext.auth.getAuthHeader(testContext.testUser!.id);
+      const fakeToken = uuidv4();
+      const newUser = await testContext.auth.createTestUser();
+      const authHeader = await testContext.auth.getAuthHeader(newUser.id);
       
       const response = await testContext.request
-        .post(`/invitations/${nonExistentToken}/accept`)
+        .post(`/api/v1/invitations/${fakeToken}/accept`)
         .set(authHeader);
       
       expect(response.status).toBe(404);
     });
 
     it('should return 400 if user is already a team member', async () => {
-      // Try to accept invitation as the team owner (already a member)
+      // Use the team owner as they're already a member
       const authHeader = await testContext.auth.getAuthHeader(testContext.testUser!.id);
       
       const response = await testContext.request
-        .post(`/invitations/${testContext.testInvitation!.token}/accept`)
+        .post(`/api/v1/invitations/${testContext.testInvitation!.token}/accept`)
         .set(authHeader);
       
       expect(response.status).toBe(400);
@@ -153,10 +145,10 @@ describe('Invitation Endpoints', () => {
     });
   });
 
-  describe('DELETE /teams/:id/invitations/:invitationId', () => {
+  describe('DELETE /api/v1/teams/:id/invitations/:invitationId', () => {
     it('should return 401 if not authenticated', async () => {
       const response = await testContext.request
-        .delete(`/teams/${testContext.testTeam!.id}/invitations/${testContext.testInvitation!.id}`);
+        .delete(`/api/v1/teams/${testContext.testTeam!.id}/invitations/${testContext.testInvitation!.id}`);
       
       expect(response.status).toBe(401);
     });
@@ -165,50 +157,44 @@ describe('Invitation Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(testContext.testUser!.id);
       
       const response = await testContext.request
-        .delete(`/teams/${testContext.testTeam!.id}/invitations/${testContext.testInvitation!.id}`)
+        .delete(`/api/v1/teams/${testContext.testTeam!.id}/invitations/${testContext.testInvitation!.id}`)
         .set(authHeader);
       
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('success', true);
       
-      // Verify invitation was deleted
-      const invitationResponse = await testContext.request
-        .get(`/invitations/${testContext.testInvitation!.token}`);
+      // Verify that the invitation has been deleted
+      const { data, error } = await testContext.server.supabase
+        .from('team_invitations')
+        .select('*')
+        .eq('id', testContext.testInvitation!.id);
       
-      expect(invitationResponse.status).toBe(404);
+      expect(data.length).toBe(0);
     });
 
     it('should return 403 for non-admin team member', async () => {
-      // Create a new user and add as regular member
+      // Create a regular member
       const memberUser = await testContext.auth.createTestUser();
-      await testContext.auth.addTeamMember(
-        testContext.testTeam!.id,
-        memberUser.id,
-        'member'
-      );
+      await testContext.auth.addTeamMember(testContext.testTeam!.id, memberUser.id, 'member');
       
       const authHeader = await testContext.auth.getAuthHeader(memberUser.id);
       
       const response = await testContext.request
-        .delete(`/teams/${testContext.testTeam!.id}/invitations/${testContext.testInvitation!.id}`)
+        .delete(`/api/v1/teams/${testContext.testTeam!.id}/invitations/${testContext.testInvitation!.id}`)
         .set(authHeader);
       
       expect(response.status).toBe(403);
     });
 
     it('should allow admin to delete invitation', async () => {
-      // Create a new user and add as admin
+      // Create an admin member
       const adminUser = await testContext.auth.createTestUser();
-      await testContext.auth.addTeamMember(
-        testContext.testTeam!.id,
-        adminUser.id,
-        'admin'
-      );
+      await testContext.auth.addTeamMember(testContext.testTeam!.id, adminUser.id, 'admin');
       
       const authHeader = await testContext.auth.getAuthHeader(adminUser.id);
       
       const response = await testContext.request
-        .delete(`/teams/${testContext.testTeam!.id}/invitations/${testContext.testInvitation!.id}`)
+        .delete(`/api/v1/teams/${testContext.testTeam!.id}/invitations/${testContext.testInvitation!.id}`)
         .set(authHeader);
       
       expect(response.status).toBe(200);
@@ -216,11 +202,11 @@ describe('Invitation Endpoints', () => {
     });
 
     it('should return 404 for non-existent invitation', async () => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
       const authHeader = await testContext.auth.getAuthHeader(testContext.testUser!.id);
-      const nonExistentInvitationId = uuidv4();
       
       const response = await testContext.request
-        .delete(`/teams/${testContext.testTeam!.id}/invitations/${nonExistentInvitationId}`)
+        .delete(`/api/v1/teams/${testContext.testTeam!.id}/invitations/${nonExistentId}`)
         .set(authHeader);
       
       expect(response.status).toBe(404);

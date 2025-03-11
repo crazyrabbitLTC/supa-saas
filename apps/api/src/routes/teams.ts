@@ -677,22 +677,21 @@ export const invitationRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
         200: {
           type: 'object',
           properties: {
-            valid: { type: 'boolean' },
-            invitation: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                teamId: { type: 'string' },
-                email: { type: 'string' },
-                role: { type: 'string' },
-                expiresAt: { type: 'string', format: 'date-time' },
-              }
-            }
+            id: { type: 'string' },
+            teamId: { type: 'string' },
+            email: { type: 'string' },
+            role: { type: 'string' },
+            token: { type: 'string' },
+            expiresAt: { type: 'string', format: 'date-time' },
+            teamName: { type: 'string' }
           }
         }
       }
     },
-    handler: teamController.verifyInvitation.bind(teamController)
+    handler: async (request, reply) => {
+      console.log('\n\n==== ROUTE HANDLER INVOKED FOR GET INVITATION ====\n\n');
+      return teamController.verifyInvitation(request, reply);
+    }
   });
 
   // Accept an invitation (requires authentication)
@@ -713,6 +712,7 @@ export const invitationRoutes: FastifyPluginAsync = async (fastify: FastifyInsta
           type: 'object',
           properties: {
             success: { type: 'boolean' },
+            teamId: { type: 'string' },
             team: {
               type: 'object',
               properties: {

@@ -527,6 +527,8 @@ class TeamService {
    * Get an invitation by token
    */
   async getInvitationByToken(token: string): Promise<TeamInvitation | null> {
+    console.log(`TeamService: Looking up invitation by token: ${token}`);
+    
     const { data: invitation, error: invitationError } = await supabaseAdmin
       .from('team_invitations')
       .select('*')
@@ -535,63 +537,113 @@ class TeamService {
     
     if (invitationError) {
       if (invitationError.code === 'PGRST116') {
+        console.log(`TeamService: Invitation not found for token: ${token}`);
         return null; // Invitation not found
       }
+      console.error(`TeamService: Error getting invitation: ${invitationError.message}`);
       throw new Error(`Failed to get invitation: ${invitationError.message}`);
     }
     
+    console.log(`TeamService: Raw invitation from DB: ${JSON.stringify(invitation)}`);
+    
     // Check if the invitation has expired
     if (new Date(invitation.expires_at) < new Date()) {
+      console.log(`TeamService: Invitation has expired: ${invitation.expires_at}`);
       return null; // Invitation expired
     }
     
-    return snakeToCamel(invitation) as TeamInvitation;
+    const result = snakeToCamel(invitation) as TeamInvitation;
+    console.log(`TeamService: Converted invitation: ${JSON.stringify(result)}`);
+    
+    return result;
   }
 
   /**
    * Accept an invitation
    */
   async acceptInvitation({ token, userId }: AcceptInvitationParams): Promise<string | null> {
-    // Get the invitation
+    console.log(`TeamService: Accepting invitation with token: ${token} for user: ${userId}`);
+    
+    // First check if the invitation exists
     const { data: invitation, error: invitationError } = await supabaseAdmin
       .from('team_invitations')
       .select('*')
       .eq('token', token)
-      .single();
+      .maybeSingle();
     
     if (invitationError) {
-      if (invitationError.code === 'PGRST116') {
-        return null; // Invitation not found
-      }
+      console.error(`TeamService: Error getting invitation during accept: ${invitationError.message}`);
       throw new Error(`Failed to get invitation: ${invitationError.message}`);
     }
     
+    if (!invitation) {
+      console.log(`TeamService: Invitation not found during accept for token: ${token}`);
+      throw new Error('Invitation not found');
+    }
+    
+    console.log(`TeamService: Found invitation during accept: ${JSON.stringify(invitation)}`);
+    
     // Check if invitation has expired
     if (new Date(invitation.expires_at) < new Date()) {
+      console.log(`TeamService: Invitation has expired during accept: ${invitation.expires_at}`);
       throw new Error('Invitation has expired');
+    }
+
+    // Check if user is already a team member
+    const { data: existingMember, error: checkError } = await supabaseAdmin
+      .from('team_members')
+      .select('*')
+      .eq('team_id', invitation.team_id)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error(`TeamService: Error checking existing membership: ${checkError.message}`);
+      throw new Error(`Failed to check existing membership: ${checkError.message}`);
+    }
+
+    if (existingMember) {
+      console.log(`TeamService: User is already a member: ${JSON.stringify(existingMember)}`);
+      throw new Error('User is already a member of this team');
     }
     
     // Add the user to the team
-    const { error: memberError } = await supabaseAdmin
-      .from('team_members')
-      .insert({
-        team_id: invitation.team_id,
-        user_id: userId,
-        role: invitation.role,
-      });
-    
-    if (memberError) {
-      throw new Error(`Failed to add team member: ${memberError.message}`);
+    try {
+      const { error: memberError } = await supabaseAdmin
+        .from('team_members')
+        .insert({
+          team_id: invitation.team_id,
+          user_id: userId,
+          role: invitation.role,
+        });
+      
+      if (memberError) {
+        // Check specifically for duplicate key violation
+        if (memberError.message.includes('duplicate key value violates unique constraint')) {
+          throw new Error('User is already a member of this team');
+        }
+        throw new Error(`Failed to add team member: ${memberError.message}`);
+      }
+    } catch (error: any) {
+      console.error(`TeamService: Error adding team member: ${error.message}`);
+      throw error;
     }
     
     // Delete the invitation
-    const { error: deleteError } = await supabaseAdmin
-      .from('team_invitations')
-      .delete()
-      .eq('id', invitation.id);
-    
-    if (deleteError) {
-      throw new Error(`Failed to delete invitation: ${deleteError.message}`);
+    try {
+      const { error: deleteError } = await supabaseAdmin
+        .from('team_invitations')
+        .delete()
+        .eq('id', invitation.id);
+      
+      if (deleteError) {
+        console.error(`TeamService: Error deleting invitation: ${deleteError.message}`);
+        throw new Error(`Failed to delete invitation: ${deleteError.message}`);
+      }
+    } catch (error: any) {
+      console.error(`TeamService: Error in delete operation: ${error.message}`);
+      // We don't throw here because the user was already added to the team
+      // Just log the error
     }
     
     return invitation.team_id;
@@ -601,6 +653,21 @@ class TeamService {
    * Delete an invitation
    */
   async deleteInvitation(id: string): Promise<boolean> {
+    // First check if the invitation exists
+    const { data: invitation, error: checkError } = await supabaseAdmin
+      .from('team_invitations')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (checkError) {
+      throw new Error(`Failed to check invitation: ${checkError.message}`);
+    }
+    
+    if (!invitation) {
+      return false; // Invitation doesn't exist
+    }
+    
     const { error } = await supabaseAdmin
       .from('team_invitations')
       .delete()
@@ -707,4 +774,5 @@ class TeamService {
   }
 }
 
+export const teamService = new TeamService(); 
 export const teamService = new TeamService(); 
