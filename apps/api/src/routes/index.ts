@@ -25,23 +25,37 @@ import { teamRoutes, invitationRoutes } from './teams';
  * @param server The Fastify server instance
  */
 export function registerRoutes(server: FastifyInstance): void {
+  console.log('Starting route registration...');
+  
   // Register health check routes
+  console.log('Registering health check routes...');
   server.register(healthRoutes, { prefix: '/health' });
+  console.log('Health check routes registered');
   
   // Register API routes with version prefix
+  console.log('Registering API routes with version prefix...');
   server.register(
     async (api) => {
       // Register profile routes
+      console.log('Registering profile routes...');
       api.register(profileRoutes, { prefix: '/profiles' });
+      console.log('Profile routes registered');
       
       // Register team routes
+      console.log('Registering team routes...');
       api.register(teamRoutes, { prefix: '/teams' });
+      console.log('Team routes registered');
       
       // Register invitation routes
+      console.log('Registering invitation routes...');
       api.register(invitationRoutes, { prefix: '/invitations' });
+      console.log('Invitation routes registered');
       
       // Add more route modules here
     },
     { prefix: '/api/v1' }
   );
+  console.log('API routes registered with version prefix');
+  
+  console.log('Route registration complete');
 } 

@@ -237,153 +237,78 @@ class TeamService {
    * Delete a team
    */
   async deleteTeam(id: string): Promise<boolean> {
-    // Check if the team exists and is not a personal team
-    console.log(`[DEBUG] deleteTeam: Checking if team ${id} exists and is not personal`);
-    const { data: team, error: fetchError } = await supabaseAdmin
-      .from('teams')
-      .select('is_personal')
-      .eq('id', id)
-      .single();
-      
-    if (fetchError) {
-      console.error(`[ERROR] deleteTeam: Error fetching team ${id}:`, fetchError);
-      if (fetchError.code === 'PGRST116') {
-        console.log(`[DEBUG] deleteTeam: Team ${id} not found`);
-        return false; // Team not found
-      }
-      throw new Error(`Failed to check team: ${fetchError.message}`);
-    }
-    
-    console.log(`[DEBUG] deleteTeam: Team ${id} found, is_personal: ${team.is_personal}`);
-    
-    if (team.is_personal) {
-      console.log(`[WARN] deleteTeam: Cannot delete personal team ${id}`);
-      throw new Error('Cannot delete a personal team');
-    }
-    
     try {
-      // Delete the team
-      console.log(`[DEBUG] deleteTeam: Deleting team ${id}`);
-      const { error } = await supabaseAdmin
-        .from('teams')
-        .delete()
-        .eq('id', id);
+      console.log(`[DEBUG] deleteTeam: Checking if team ${id} exists and is not personal`);
       
-      if (error) {
-        console.error(`[ERROR] deleteTeam: Error deleting team ${id}:`, error);
-        
-        // Handle specific error messages
-        if (error.message && error.message.includes('last owner')) {
-          // Only throw in non-test environments
-          if (process.env.NODE_ENV !== 'test') {
-            console.log(`[WARN] deleteTeam: Cannot delete team - last owner validation triggered, but bypassing in test mode`);
-            throw new Error('Cannot remove the last owner of a team');
-          } else {
-            console.log(`[INFO] deleteTeam: Bypassing last owner validation in test mode for team ${id}`);
-            // In test mode, we'll force delete the team using our forceDeleteTeamForTest method
-            return await this.forceDeleteTeamForTest(id);
-          }
-        }
-        
-        throw new Error(`Failed to delete team: ${error.message}`);
-      }
-      
-      console.log(`[DEBUG] deleteTeam: Successfully deleted team ${id}`);
-      return true;
-    } catch (deleteError: any) {
-      // Re-throw specific errors we want to handle at the controller level
-      if (deleteError.message && (
-        deleteError.message.includes('last owner') || 
-        deleteError.message.includes('Cannot remove')
-      )) {
-        throw deleteError;
-      }
-      console.error(`[ERROR] deleteTeam: Exception deleting team ${id}:`, deleteError);
-      throw new Error(`Failed to delete team: ${deleteError.message}`);
-    }
-  }
-
-  /**
-   * Force delete a team for test purposes, bypassing normal database constraints
-   * This should ONLY be used in test environments
-   * @param {string} id - The team ID to delete
-   * @returns {Promise<boolean>} True if deleted, false if not found or not deleted
-   */
-  async forceDeleteTeamForTest(id: string): Promise<boolean> {
-    // Safety check to prevent accidental use in non-test environments
-    if (process.env.NODE_ENV !== 'test') {
-      console.error('[ERROR] forceDeleteTeamForTest: Attempted to use in non-test environment');
-      throw new Error('forceDeleteTeamForTest can only be used in test environments');
-    }
-
-    console.log(`[INFO] forceDeleteTeamForTest: Force deleting team ${id} for test purposes`);
-    
-    try {
-      // First check if the team exists
+      // First check if the team exists and is not a personal team
       const { data: team, error: fetchError } = await supabaseAdmin
         .from('teams')
         .select('*')
         .eq('id', id)
         .single();
       
-      if (fetchError || !team) {
-        console.error(`[ERROR] forceDeleteTeamForTest: Team ${id} not found:`, fetchError);
-        return false;
+      if (fetchError) {
+        console.error(`[ERROR] deleteTeam: Error fetching team ${id}:`, fetchError);
+        if (fetchError.code === 'PGRST116') {
+          console.log(`[DEBUG] deleteTeam: Team ${id} not found`);
+          return false; // Team not found
+        }
+        throw new Error(`Failed to check team: ${fetchError.message}`);
       }
       
-      console.log(`[DEBUG] forceDeleteTeamForTest: Team found, now deleting all team members`);
+      console.log(`[DEBUG] deleteTeam: Team ${id} found, is_personal: ${team.is_personal}`);
       
-      // First delete all team members to avoid the trigger constraint
-      const { error: memberDeleteError } = await supabaseAdmin
-        .from('team_members')
-        .delete()
-        .eq('team_id', id);
-
-      if (memberDeleteError) {
-        console.error(`[ERROR] forceDeleteTeamForTest: Error deleting team members: ${memberDeleteError.message}`);
-        // Continue anyway to try deleting the team
+      if (team.is_personal) {
+        console.log(`[WARN] deleteTeam: Cannot delete personal team ${id}`);
+        throw new Error('Cannot delete a personal team');
       }
-
-      // Also delete any team invitations
-      const { error: invitationDeleteError } = await supabaseAdmin
-        .from('team_invitations')
-        .delete()
-        .eq('team_id', id);
+      
+      try {
+        // Delete the team
+        console.log(`[DEBUG] deleteTeam: Deleting team ${id}`);
+        const { error } = await supabaseAdmin
+          .from('teams')
+          .delete()
+          .eq('id', id);
         
-      if (invitationDeleteError) {
-        console.error(`[ERROR] forceDeleteTeamForTest: Error deleting team invitations: ${invitationDeleteError.message}`);
-        // Continue anyway to try deleting the team
-      }
-
-      // Now delete the team
-      console.log(`[DEBUG] forceDeleteTeamForTest: Deleting team ${id}`);
-      const { error: teamDeleteError } = await supabaseAdmin
-        .from('teams')
-        .delete()
-        .eq('id', id);
-
-      if (teamDeleteError) {
-        console.error(`[ERROR] forceDeleteTeamForTest: Error deleting team: ${teamDeleteError.message}`);
-        return false;
-      }
-
-      // Double check that the team was actually deleted
-      const { data: checkTeam, error: checkError } = await supabaseAdmin
-        .from('teams')
-        .select('*')
-        .eq('id', id)
-        .single();
+        if (error) {
+          console.error(`[ERROR] deleteTeam: Error deleting team ${id}:`, error);
+          
+          // Handle specific error messages
+          if (error.message && error.message.includes('last owner')) {
+            throw new Error('Cannot remove the last owner of a team');
+          }
+          
+          throw new Error(`Failed to delete team: ${error.message}`);
+        }
         
-      if (!checkError) {
-        console.error(`[ERROR] forceDeleteTeamForTest: Team ${id} still exists after deletion attempt`);
-        return false;
+        console.log(`[DEBUG] deleteTeam: Successfully deleted team ${id}`);
+        return true;
+      } catch (deleteError: any) {
+        // Re-throw specific errors we want to handle at the controller level
+        if (deleteError.message && (
+          deleteError.message.includes('last owner') || 
+          deleteError.message.includes('Cannot remove')
+        )) {
+          console.log(`[WARN] deleteTeam: Cannot delete team - ${deleteError.message}`);
+          throw deleteError;
+        }
+        
+        throw new Error(`Failed to delete team: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
       }
-
-      console.log(`[INFO] forceDeleteTeamForTest: Successfully force-deleted team ${id}`);
-      return true;
     } catch (error: any) {
-      console.error(`[ERROR] forceDeleteTeamForTest: Failed to force delete team: ${error.message}`);
-      return false;
+      console.error(`[ERROR] deleteTeam: Exception deleting team ${id}:`, error);
+      
+      // Re-throw specific error types we want to handle specially
+      if (error instanceof Error && (
+        error.message === 'Cannot delete a personal team' ||
+        error.message.includes('last owner') ||
+        error.message.includes('Cannot remove')
+      )) {
+        throw error;
+      }
+      
+      throw new Error(`Failed to delete team: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -518,14 +443,6 @@ class TeamService {
    * Check if a user is a member of a team
    */
   async isTeamMember(teamId: string, userId: string): Promise<boolean> {
-    // First check if the team exists
-    const team = await this.getTeamById(teamId);
-    if (!team) {
-      // Team doesn't exist (or was deleted)
-      return false;
-    }
-    
-    // Now check if the user is a member
     // Use supabaseAdmin instead of supabaseClient to bypass RLS policies
     const { data, error } = await supabaseAdmin
       .from('team_members')
@@ -854,18 +771,6 @@ class TeamService {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
-  }
-
-  /**
-   * Clear any cached data for a specific team
-   * This is useful after team deletion to ensure we don't return stale data
-   */
-  async clearTeamCache(teamId: string): Promise<void> {
-    // Currently we don't have a caching mechanism, but this method
-    // ensures we have a consistent API if caching is added in the future.
-    // In a real application, you might call Redis or another cache service here.
-    console.log(`[DEBUG] clearTeamCache: Cleared cache for team ${teamId}`);
-    return;
   }
 }
 

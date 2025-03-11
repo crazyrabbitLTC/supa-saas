@@ -85,16 +85,16 @@ describe('Team Members Endpoints', () => {
         .send({ role: 'admin' });
       
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('userId', testContext.testMember!.userId);
-      expect(response.body).toHaveProperty('teamId', testContext.testTeam!.id);
-      expect(response.body).toHaveProperty('role', 'admin');
+      expect(response.body.data).toHaveProperty('userId', testContext.testMember!.userId);
+      expect(response.body.data).toHaveProperty('teamId', testContext.testTeam!.id);
+      expect(response.body.data).toHaveProperty('role', 'admin');
       
       // Verify role was updated
       const teamMembersResponse = await testContext.request
         .get(`/api/v1/teams/${testContext.testTeam!.id}/members`)
         .set(authHeader);
       
-      const members = teamMembersResponse.body;
+      const members = teamMembersResponse.body.data;
       const updatedMember = members.find((m: any) => m.userId === testContext.testMember!.userId);
       
       expect(updatedMember).toBeDefined();
@@ -190,15 +190,17 @@ describe('Team Members Endpoints', () => {
         .delete(`/api/v1/teams/${testContext.testTeam!.id}/members/${testContext.testMember!.userId}`)
         .set(authHeader);
       
-      // API returns 204 No Content on successful deletion
-      expect(response.status).toBe(204);
+      // API returns 200 with success message on successful deletion
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('message');
       
       // Verify member was removed
       const teamMembersResponse = await testContext.request
         .get(`/api/v1/teams/${testContext.testTeam!.id}/members`)
         .set(authHeader);
       
-      const members = teamMembersResponse.body;
+      const members = teamMembersResponse.body.data;
       const removedMember = members.find((m: any) => m.userId === testContext.testMember!.userId);
       
       expect(removedMember).toBeUndefined();
@@ -237,15 +239,17 @@ describe('Team Members Endpoints', () => {
         .delete(`/api/v1/teams/${testContext.testTeam!.id}/members/${testContext.testMember!.userId}`)
         .set(authHeader);
       
-      // API returns 204 No Content on successful deletion
-      expect(response.status).toBe(204);
+      // API returns 200 with success message on successful deletion
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('message');
       
       // Verify member was removed
       const teamMembersResponse = await testContext.request
         .get(`/api/v1/teams/${testContext.testTeam!.id}/members`)
         .set(authHeader);
       
-      const members = teamMembersResponse.body;
+      const members = teamMembersResponse.body.data;
       const removedMember = members.find((m: any) => m.userId === testContext.testMember!.userId);
       
       expect(removedMember).toBeUndefined();
@@ -297,8 +301,10 @@ describe('Team Members Endpoints', () => {
         .delete(`/api/v1/teams/${testContext.testTeam!.id}/members/${nonExistentUserId}`)
         .set(authHeader);
       
-      // API returns 204 No Content even for non-existent members
-      expect(response.status).toBe(204);
+      // API returns 200 with success message even for non-existent members
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('message');
     });
   });
 }); 

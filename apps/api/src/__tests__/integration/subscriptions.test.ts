@@ -45,12 +45,12 @@ describe('Subscription Management Endpoints', () => {
     }
   });
 
-  describe('GET /teams/:id/subscription', () => {
+  describe('GET /api/v1/teams/:id/subscription', () => {
     it('should return subscription details for team owner', async () => {
       const authHeader = await testContext.auth.getAuthHeader(testContext.testUser!.id);
       
       const response = await testContext.request
-        .get(`/teams/${testContext.testTeam!.id}/subscription`)
+        .get(`/api/v1/teams/${testContext.testTeam!.id}/subscription`)
         .set(authHeader);
       
       expect(response.status).toBe(200);
@@ -61,7 +61,7 @@ describe('Subscription Management Endpoints', () => {
 
     it('should return 401 if not authenticated', async () => {
       const response = await testContext.request
-        .get(`/teams/${testContext.testTeam!.id}/subscription`);
+        .get(`/api/v1/teams/${testContext.testTeam!.id}/subscription`);
       
       expect(response.status).toBe(401);
     });
@@ -72,7 +72,7 @@ describe('Subscription Management Endpoints', () => {
       const authHeader = await testContext.auth.getAuthHeader(nonMemberUser.id);
       
       const response = await testContext.request
-        .get(`/teams/${testContext.testTeam!.id}/subscription`)
+        .get(`/api/v1/teams/${testContext.testTeam!.id}/subscription`)
         .set(authHeader);
       
       expect(response.status).toBe(403);

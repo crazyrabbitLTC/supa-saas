@@ -16,7 +16,7 @@
  */
 
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { executeRawQuery } from 'database';
+import { getSupabaseAdmin } from 'database';
 
 /**
  * Health check routes
@@ -34,7 +34,9 @@ export const healthRoutes: FastifyPluginAsync = async (fastify: FastifyInstance)
     let dbStatus = 'ok';
     try {
       // Simple query to check database connection
-      await executeRawQuery('SELECT 1');
+      const supabase = getSupabaseAdmin();
+      const { error } = await supabase.from('teams').select('count').limit(1);
+      if (error) throw error;
     } catch (error) {
       fastify.log.error(error, 'Database health check failed');
       dbStatus = 'error';

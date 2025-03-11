@@ -10,6 +10,10 @@ import { buildServer } from '../../server';
 import { testDb } from '../../../../../packages/database/src/__tests__/setup';
 import supertest from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
+import { registerRoutes } from '../../routes';
+import { healthRoutes } from '../../routes/health';
+import { profileRoutes } from '../../routes/profiles';
+import { teamRoutes, invitationRoutes } from '../../routes/teams';
 
 /**
  * Initialize a test server for API tests
@@ -23,34 +27,148 @@ export async function initTestServer(): Promise<{
   };
   cleanup: (ids: { teamIds?: string[]; userIds?: string[]; invitationIds?: string[] }) => Promise<void>;
 }> {
-  // Build server without starting it
-  const server = await buildServer();
+  console.log('=== INITIALIZING TEST SERVER ===');
   
-  // Create supertest instance
-  const request = supertest(server.server);
-  
-  // Authentication utilities
-  const auth = {
-    /**
-     * Get authorization header with JWT for user
-     */
-    getAuthHeader: async (userId: string): Promise<{ Authorization: string }> => {
-      const jwt = await testDb.getTestJwt(userId);
-      return { Authorization: `Bearer ${jwt}` };
-    },
+  try {
+    // Build server without starting it
+    console.log('Building server...');
+    const server = await buildServer({ skipRouteRegistration: true });
+    console.log('Server built successfully');
+
+    // Debug server instance before route registration
+    console.log('=== SERVER STATE BEFORE ROUTE REGISTRATION ===');
     
-    /**
-     * Create a test user
-     */
-    createTestUser: testDb.createTestUser
-  };
-  
-  return {
-    server,
-    request,
-    auth,
-    cleanup: testDb.cleanup
-  };
+    // Inspect hooks
+    // @ts-ignore - Accessing Fastify internals for debugging
+    const preHooks = server.hasOwnProperty('_hooks') ? server['_hooks'] : {};
+    console.log('Pre-registration hooks:');
+    Object.keys(preHooks).forEach(hookName => {
+      console.log(`  Hook: ${hookName}, Handlers: ${preHooks[hookName]?.length || 0}`);
+      if (preHooks[hookName]?.length > 0) {
+        console.log(`    Handler sources: ${preHooks[hookName].map((h: any) => h.source || 'unknown').join(', ')}`);
+      }
+    });
+    
+    // Inspect plugins 
+    // @ts-ignore - Accessing Fastify internals for debugging
+    const plugins = server.hasOwnProperty('_plugins') ? server['_plugins'] : [];
+    console.log('Registered plugins:');
+    plugins.forEach((plugin: any, index: number) => {
+      console.log(`  Plugin ${index + 1}: ${plugin.name || 'unnamed'}`);
+    });
+    
+    // Add delay to ensure asynchronous plugin initialization completes
+    console.log('Adding delay to ensure plugin initialization completes...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('Delay completed');
+    
+    // Manually register routes to ensure they're properly registered
+    console.log('Manually registering routes...');
+    
+    // Register health check routes
+    console.log('Registering health check routes...');
+    await server.register(healthRoutes, { prefix: '/health' });
+    console.log('Health check routes registered');
+    
+    // Register API routes with version prefix
+    console.log('Registering API routes with version prefix...');
+    await server.register(
+      async (api) => {
+        // Register profile routes
+        console.log('Registering profile routes...');
+        await api.register(profileRoutes, { prefix: '/profiles' });
+        console.log('Profile routes registered');
+        
+        // Register team routes
+        console.log('Registering team routes...');
+        await api.register(teamRoutes, { prefix: '/teams' });
+        console.log('Team routes registered');
+        
+        // Register invitation routes
+        console.log('Registering invitation routes...');
+        await api.register(invitationRoutes, { prefix: '/invitations' });
+        console.log('Invitation routes registered');
+      },
+      { prefix: '/api/v1' }
+    );
+    console.log('API routes registered with version prefix');
+    
+    // Add delay after route registration
+    console.log('Adding delay after route registration...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('Delay completed');
+    
+    // Debug server instance after route registration  
+    console.log('=== SERVER STATE AFTER ROUTE REGISTRATION ===');
+    
+    // Inspect hooks after registration
+    // @ts-ignore - Accessing Fastify internals for debugging
+    const postHooks = server.hasOwnProperty('_hooks') ? server['_hooks'] : {};
+    console.log('Post-registration hooks:');
+    Object.keys(postHooks).forEach(hookName => {
+      console.log(`  Hook: ${hookName}, Handlers: ${postHooks[hookName]?.length || 0}`);
+      if (postHooks[hookName]?.length > 0) {
+        console.log(`    Handler sources: ${postHooks[hookName].map((h: any) => h.source || 'unknown').join(', ')}`);
+      }
+    });
+    
+    // Log registered routes after manual registration
+    console.log('=== REGISTERED ROUTES AFTER MANUAL REGISTRATION ===');
+    const routes = server.printRoutes ? server.printRoutes() : server.getRoutes();
+    
+    if (typeof routes === 'string') {
+      // If printRoutes returns a string, log it directly
+      console.log(routes);
+    } else {
+      // If getRoutes returns an array, format and log each route
+      routes.forEach((route: any) => {
+        console.log(`${route.method} ${route.url}`);
+      });
+    }
+    console.log('=========================');
+
+    // Ensure server is ready for requests (internal fastify ready event)
+    console.log('Awaiting server ready state...');
+    await server.ready();
+    console.log('Server ready');
+    
+    // Create supertest instance
+    console.log('Creating supertest instance...');
+    const request = supertest(server.server);
+    console.log('Supertest instance created');
+    
+    // Authentication utilities
+    console.log('Setting up authentication utilities...');
+    const auth = {
+      /**
+       * Get authorization header with JWT for user
+       */
+      getAuthHeader: async (userId: string): Promise<{ Authorization: string }> => {
+        console.log(`Generating auth header for user: ${userId}`);
+        const jwt = await testDb.getTestJwt(userId);
+        return { Authorization: `Bearer ${jwt}` };
+      },
+      
+      /**
+       * Create a test user
+       */
+      createTestUser: testDb.createTestUser
+    };
+    console.log('Authentication utilities set up');
+    
+    console.log('=== TEST SERVER INITIALIZATION COMPLETE ===');
+    
+    return {
+      server,
+      request,
+      auth,
+      cleanup: testDb.cleanup
+    };
+  } catch (error) {
+    console.error('=== ERROR INITIALIZING TEST SERVER ===');
+    console.error(error);
+    throw error;
+  }
 }
 
 /**
@@ -130,17 +248,17 @@ export const testData = {
  */
 export const routes = {
   teams: {
-    base: '/teams',
-    byId: (id: string) => `/teams/${id}`,
-    members: (id: string) => `/teams/${id}/members`,
-    member: (teamId: string, userId: string) => `/teams/${teamId}/members/${userId}`,
-    invitations: (id: string) => `/teams/${id}/invitations`,
-    invitation: (teamId: string, invitationId: string) => `/teams/${teamId}/invitations/${invitationId}`,
-    subscription: (id: string) => `/teams/${id}/subscription`
+    base: '/api/v1/teams',
+    byId: (id: string) => `/api/v1/teams/${id}`,
+    members: (id: string) => `/api/v1/teams/${id}/members`,
+    member: (teamId: string, userId: string) => `/api/v1/teams/${teamId}/members/${userId}`,
+    invitations: (id: string) => `/api/v1/teams/${id}/invitations`,
+    invitation: (teamId: string, invitationId: string) => `/api/v1/teams/${teamId}/invitations/${invitationId}`,
+    subscription: (id: string) => `/api/v1/teams/${id}/subscription`
   },
   invitations: {
-    verify: (token: string) => `/invitations/${token}`,
-    accept: (token: string) => `/invitations/${token}/accept`
+    verify: (token: string) => `/api/v1/invitations/${token}`,
+    accept: (token: string) => `/api/v1/invitations/${token}/accept`
   },
-  subscriptionTiers: '/subscription-tiers'
+  subscriptionTiers: '/api/v1/subscription-tiers'
 }; 

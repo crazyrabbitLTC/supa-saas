@@ -26,23 +26,45 @@ import { authPlugin } from './plugins/auth';
 import { errorHandler } from './middleware/error-handler';
 
 /**
+ * Options for building the server
+ */
+interface BuildServerOptions {
+  skipRouteRegistration?: boolean;
+}
+
+/**
  * Builds and configures a Fastify server instance
+ * @param options Options for building the server
  * @returns A configured Fastify server
  */
-export async function buildServer(): Promise<FastifyInstance> {
+export async function buildServer(options: BuildServerOptions = {}): Promise<FastifyInstance> {
+  console.log('=== BUILDING SERVER ===');
+  
   // Create Fastify instance
+  console.log('Creating Fastify instance...');
   const server = Fastify({
     logger,
   });
+  console.log('Fastify instance created');
   
   // Register error handler
+  console.log('Registering error handler...');
   server.setErrorHandler(errorHandler);
+  console.log('Error handler registered');
   
   // Register plugins
+  console.log('Registering plugins...');
   await registerPlugins(server);
+  console.log('All plugins registered');
   
-  // Register routes
-  registerRoutes(server);
+  // Register routes (unless skipped)
+  if (!options.skipRouteRegistration) {
+    console.log('Registering routes...');
+    registerRoutes(server);
+    console.log('All routes registered');
+  } else {
+    console.log('Skipping route registration (will be done manually)');
+  }
   
   // Log all registered routes
   console.log('=== REGISTERED ROUTES ===');
@@ -59,6 +81,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   }
   console.log('=========================');
   
+  console.log('=== SERVER BUILD COMPLETE ===');
   return server;
 }
 
@@ -68,17 +91,24 @@ export async function buildServer(): Promise<FastifyInstance> {
  */
 async function registerPlugins(server: FastifyInstance): Promise<void> {
   // Security plugins
+  console.log('Registering security plugins...');
   await server.register(helmet);
+  console.log('Helmet plugin registered');
   await server.register(cors, {
     origin: true, // Reflect the request origin
     credentials: true,
   });
+  console.log('CORS plugin registered');
   
   // Database plugin
+  console.log('Registering database plugin...');
   await server.register(databasePlugin);
+  console.log('Database plugin registered');
   
   // Authentication plugin
+  console.log('Registering authentication plugin...');
   await server.register(authPlugin);
+  console.log('Authentication plugin registered');
   
   // Add more plugins here
 } 

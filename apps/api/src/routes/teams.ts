@@ -21,60 +21,87 @@ import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { TeamController } from '../controllers/teamController';
 import { sql } from 'drizzle-orm';
 import { supabaseAdmin } from 'database';
+import { AsyncLocalStorage } from 'async_hooks';
+import fp from 'fastify-plugin';
+import { z } from 'zod';
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { teamService } from 'database';
+
+// Common schemas
+const errorResponseSchema = {
+  type: 'object',
+  properties: {
+    error: { type: 'string' }
+  },
+  required: ['error']
+};
+
+const teamIdParamSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' }
+  },
+  required: ['id']
+};
 
 export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   const teamController = new TeamController();
+
+  // Set up request context
+  if (!fastify.hasDecorator('requestContext')) {
+    fastify.decorate('requestContext', new AsyncLocalStorage());
+  }
 
   // Require authentication for all team routes
   fastify.addHook('onRequest', fastify.authenticate);
 
   // Helper function to add owner information to team responses
-  const formatTeamResponse = async (team: any) => {
+  const formatTeamResponse = (team: any) => {
     if (!team) return team;
     
     console.log(`[DEBUG] formatTeamResponse called for team id: ${team.id}, name: ${team.name}`);
     console.log(`[DEBUG] Initial team object:`, JSON.stringify(team));
     console.log(`[DEBUG] Initial team keys:`, Object.keys(team));
     
-    let ownerId: string | undefined = undefined;
-    
-    try {
-      // Find the owner of the team using Supabase
-      console.log(`[DEBUG] Querying team_members for owner of team ${team.id}`);
-      const { data, error } = await supabaseAdmin
-        .from('team_members')
-        .select('user_id')
-        .eq('team_id', team.id)
-        .eq('role', 'owner')
-        .limit(1)
-        .single();
-      
-      if (error) {
-        console.error(`[ERROR] Error finding team owner for team ${team.id}:`, error);
-      } else if (data) {
-        console.log(`[DEBUG] Found owner for team ${team.id}: ${data.user_id}`);
-        ownerId = data.user_id;
-      } else {
-        console.log(`[WARN] No owner found for team ${team.id}`);
-      }
-    } catch (error) {
-      console.error(`[ERROR] Exception finding team owner for team ${team.id}:`, error);
+    // If ownerId already exists, use it
+    if (team.ownerId) {
+      return team;
     }
     
-    // Create a new object with all properties from the team plus the ownerId
-    const formattedTeam = {
-      ...team,
-      ownerId
-    };
+    // Check for teamMembers with owner role
+    let ownerId: string | undefined = undefined;
     
-    console.log(`[DEBUG] Formatted team object:`, JSON.stringify(formattedTeam));
-    console.log(`[DEBUG] Formatted team keys:`, Object.keys(formattedTeam));
-    console.log(`[DEBUG] Checking if ownerId exists and is enumerable:`, 
-      formattedTeam.hasOwnProperty('ownerId'), 
-      Object.getOwnPropertyDescriptor(formattedTeam, 'ownerId')
-    );
+    // If teamMembers are available, find the owner
+    if (team.teamMembers && Array.isArray(team.teamMembers)) {
+      const ownerMember = team.teamMembers.find((member: any) => member.role === 'owner');
+      if (ownerMember) {
+        ownerId = ownerMember.user_id;
+        console.log(`[DEBUG] Found owner ${ownerId} from teamMembers`);
+      }
+    } 
+    // For newly created teams, we know the authenticated user is the owner
+    else if (team.isPersonal === false && !team.ownerId) {
+      // When creating a team, we need to set the authenticated user as the owner
+      // In a POST request context, fastify.user is available
+      try {
+        // Safeguard: check if we have direct access to userId in context
+        if (fastify.requestContext && fastify.requestContext.get('userId')) {
+          ownerId = fastify.requestContext.get('userId');
+          console.log(`[DEBUG] Setting ownerId to authenticated user: ${ownerId}`);
+        }
+      } catch (error) {
+        console.log(`[DEBUG] Error getting userId from context:`, error);
+      }
+    }
     
-    return formattedTeam;
+    // Create a new object with all the original properties
+    const teamWithOwner = { ...team, ownerId };
+    
+    console.log(`[DEBUG] Formatted team object:`, JSON.stringify(teamWithOwner));
+    console.log(`[DEBUG] Formatted team keys:`, Object.keys(teamWithOwner));
+    console.log(`[DEBUG] Checking if ownerId exists and is enumerable:`, ownerId ? true : false, Object.getOwnPropertyDescriptor(teamWithOwner, 'ownerId'));
+    
+    return teamWithOwner;
   };
 
   // Format team arrays before sending
@@ -123,60 +150,59 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
       summary: 'Get all teams for current user',
       response: {
         200: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              slug: { type: 'string' },
-              description: { type: 'string' },
-              logoUrl: { type: 'string' },
-              isPersonal: { type: 'boolean' },
-              subscriptionTier: { type: 'string' },
-              maxMembers: { type: 'number' },
-              createdAt: { type: 'string', format: 'date-time' },
-              updatedAt: { type: 'string', format: 'date-time' },
-              ownerId: { type: 'string' }
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  slug: { type: 'string' },
+                  description: { type: 'string' },
+                  logoUrl: { type: 'string' },
+                  isPersonal: { type: 'boolean' },
+                  subscriptionTier: { type: 'string' },
+                  maxMembers: { type: 'number' },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time' },
+                  ownerId: { type: 'string' }
+                }
+              }
             }
           }
         }
       }
     },
   }, async (request, reply) => {
-    console.log(`[DEBUG] GET /teams: Fetching user teams`);
-    
     try {
-      // Get all teams for the user
+      console.log(`[DEBUG] GET /teams: Fetching user teams`);
       const teams = await teamController.getUserTeams(request, reply);
       
-      // If the response has already been sent, return it as is
-      if (reply.sent) {
-        console.log(`[DEBUG] GET /teams: Reply already sent`);
-        return teams;
-      }
+      if (reply.sent) return;
       
-      // Log the raw teams for debugging
-      console.log(`[DEBUG] GET /teams: Got ${teams ? teams.length : 0} teams from controller`);
-      if (teams && teams.length > 0) {
+      console.log(`[DEBUG] GET /teams: Got ${teams.length} teams from controller`);
+      
+      if (teams.length > 0) {
         console.log(`[DEBUG] GET /teams: First team before formatting:`, JSON.stringify(teams[0]));
       }
       
-      // Format teams array to include ownerId
+      // Format the teams array
       const formattedTeams = await formatTeamsArray(teams);
+      console.log(`[DEBUG] GET /teams: Returning ${formattedTeams.length} formatted teams`);
       
-      // Log the formatted teams for debugging
-      console.log(`[DEBUG] GET /teams: Returning ${formattedTeams ? formattedTeams.length : 0} formatted teams`);
-      if (formattedTeams && formattedTeams.length > 0) {
+      if (formattedTeams.length > 0) {
         console.log(`[DEBUG] GET /teams: First team after formatting:`, JSON.stringify(formattedTeams[0]));
         console.log(`[DEBUG] GET /teams: First team keys:`, Object.keys(formattedTeams[0]));
         console.log(`[DEBUG] GET /teams: First team ownerId:`, formattedTeams[0].ownerId);
       }
       
-      return reply.send(formattedTeams);
+      // Wrap in data property for consistency with schema
+      return reply.send({ data: formattedTeams });
     } catch (error) {
-      request.log.error(`Failed to get teams: ${error}`);
-      return reply.status(500).send({ error: 'Failed to get teams' });
+      request.log.error(error, 'Error getting user teams');
+      return reply.code(500).send({ error: 'Failed to get user teams' });
     }
   });
 
@@ -201,54 +227,65 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         201: {
           type: 'object',
           properties: {
-            id: { type: 'string' },
-            name: { type: 'string' },
-            slug: { type: 'string' },
-            description: { type: 'string' },
-            logoUrl: { type: 'string' },
-            isPersonal: { type: 'boolean' },
-            subscriptionTier: { type: 'string' },
-            maxMembers: { type: 'number' },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' },
-            ownerId: { type: 'string' }
-          },
-          additionalProperties: true
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+                slug: { type: 'string' },
+                description: { type: 'string' },
+                logoUrl: { type: 'string' },
+                isPersonal: { type: 'boolean' },
+                subscriptionTier: { type: 'string' },
+                maxMembers: { type: 'number' },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' },
+                ownerId: { type: 'string' }
+              }
+            }
+          }
         }
       }
     },
-  }, async (request, reply) => {
-    try {
+    onRequest: [fastify.authenticate],
+    preHandler: (request, reply, done) => {
+      // Store the userId in the request context
       const userId = request.user.id;
+      const store = new Map();
+      store.set('userId', userId);
       
-      console.log(`[DEBUG] POST /teams: Creating team for user ${userId}`);
-      
-      const team = await teamController.createTeam(request.body, userId);
-      console.log(`[DEBUG] POST /teams: Original team object:`, JSON.stringify(team));
-      console.log(`[DEBUG] POST /teams: Team object properties:`, Object.keys(team));
-      
-      console.log(`[DEBUG] POST /teams: Formatting team response for ${team.id}`);
-      // Format the team response to include the ownerId
-      const formattedTeam = await formatTeamResponse(team);
-      
-      console.log(`[DEBUG] POST /teams: Formatted team object:`, JSON.stringify(formattedTeam));
-      console.log(`[DEBUG] POST /teams: Formatted team properties:`, Object.keys(formattedTeam));
-      console.log(`[DEBUG] POST /teams: Checking if ownerId is enumerable:`, Object.getOwnPropertyDescriptor(formattedTeam, 'ownerId'));
-      
-      // Create a completely new object with all properties explicitly copied
-      const responseObj = {
-        ...formattedTeam,
-        ownerId: formattedTeam.ownerId // Explicitly copy the ownerId
-      };
-      
-      console.log(`[DEBUG] POST /teams: Response object to be sent:`, JSON.stringify(responseObj));
-      console.log(`[DEBUG] POST /teams: Response object properties:`, Object.keys(responseObj));
-      
-      // Return the explicitly constructed response object
-      return reply.code(201).send(responseObj);
-    } catch (error) {
-      request.log.error(`Failed to create team: ${error}`);
-      return reply.code(400).send({ error: 'Failed to create team' });
+      fastify.requestContext.run(store, () => {
+        console.log(`[DEBUG] POST /teams: Creating team for user ${userId}`);
+        done();
+      });
+    },
+    handler: async (request, reply) => {
+      try {
+        const userId = request.user.id;
+        console.log(`[DEBUG] POST /teams: Creating team for user ${userId}`);
+        
+        const team = await teamController.createTeam(request.body, userId);
+        console.log(`[DEBUG] POST /teams: Original team object:`, JSON.stringify(team));
+        console.log(`[DEBUG] POST /teams: Team object properties:`, Object.keys(team));
+        
+        console.log(`[DEBUG] POST /teams: Formatting team response for ${team.id}`);
+        // Add ownerId manually for newly created teams
+        const formattedTeam = formatTeamResponse({...team, ownerId: userId});
+        
+        console.log(`[DEBUG] POST /teams: Formatted team object:`, JSON.stringify(formattedTeam));
+        console.log(`[DEBUG] POST /teams: Formatted team properties:`, Object.keys(formattedTeam));
+        console.log(`[DEBUG] POST /teams: Checking if ownerId is enumerable:`, Object.getOwnPropertyDescriptor(formattedTeam, 'ownerId'));
+        
+        // Wrap in data property for consistency with schema
+        const responseObj = { data: formattedTeam };
+        console.log(`[DEBUG] POST /teams: Response object to be sent:`, JSON.stringify(responseObj));
+        console.log(`[DEBUG] POST /teams: Response object properties:`, Object.keys(responseObj));
+        
+        return reply.code(201).send(responseObj);
+      } catch (error) {
+        request.log.error(`Failed to create team: ${error}`);
+        return reply.code(400).send({ error: 'Failed to create team' });
+      }
     }
   });
 
@@ -256,32 +293,72 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
    * GET /teams/:id
    * Get a team by ID
    */
-  fastify.get('/:id', async (request, reply) => {
-    console.log(`[DEBUG] GET /teams/:id: Fetching team ${request.params.id}`);
-    const response = await teamController.getTeamById(request, reply);
-    
-    // If the response has already been sent, return it as is
-    if (reply.sent) {
-      console.log('[DEBUG] GET /teams/:id: Reply already sent');
-      return response;
+  fastify.get('/:id', {
+    schema: {
+      tags: ['teams'],
+      summary: 'Get a team by ID',
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', format: 'uuid' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+                slug: { type: 'string' },
+                description: { type: 'string' },
+                logoUrl: { type: 'string' },
+                isPersonal: { type: 'boolean' },
+                subscriptionTier: { type: 'string' },
+                maxMembers: { type: 'number' },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' },
+                ownerId: { type: 'string' }
+              }
+            }
+          }
+        }
+      }
+    },
+    onRequest: [fastify.authenticate],
+    handler: async (request, reply) => {
+      try {
+        const { id } = request.params;
+        console.log(`[DEBUG] GET /teams/:id: Fetching team ${id}`);
+        
+        const team = await teamController.getTeamById(request, reply);
+        
+        if (reply.sent) {
+          console.log(`[DEBUG] GET /teams/:id: Reply already sent`);
+          return;
+        }
+        
+        console.log(`[DEBUG] GET /teams/:id: Formatting team response for ${id}`);
+        const formattedTeam = formatTeamResponse(team);
+        
+        console.log(`[DEBUG] GET /teams/:id: Formatted team response: `, formattedTeam);
+        
+        // Wrap in data property for consistency with schema
+        return reply.send({ data: formattedTeam });
+      } catch (error) {
+        request.log.error(error, 'Error getting team by ID');
+        return reply.code(500).send({ error: 'Failed to get team' });
+      }
     }
-    
-    // Format the team response
-    if (response && !Array.isArray(response)) {
-      console.log(`[DEBUG] GET /teams/:id: Formatting team response for ${response.id}`);
-      const formattedTeam = await formatTeamResponse(response);
-      console.log(`[DEBUG] GET /teams/:id: Formatted team response: `, formattedTeam);
-      return reply.send(formattedTeam);
-    }
-    
-    console.log('[DEBUG] GET /teams/:id: Sending response as-is');
-    return reply.send(response);
   });
 
   /**
    * Update team details
    */
-  fastify.put<{ Params: { id: string }; Body: object }>('/:id', {
+  fastify.put('/:id', {
     schema: {
       tags: ['teams'],
       summary: 'Update team details',
@@ -305,65 +382,97 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         200: {
           type: 'object',
           properties: {
-            id: { type: 'string' },
-            name: { type: 'string' },
-            slug: { type: 'string' },
-            description: { type: 'string' },
-            logoUrl: { type: 'string' },
-            isPersonal: { type: 'boolean' },
-            subscriptionTier: { type: 'string' },
-            maxMembers: { type: 'number' },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' },
-            ownerId: { type: 'string' }
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+                slug: { type: 'string' },
+                description: { type: 'string' },
+                logoUrl: { type: 'string' },
+                isPersonal: { type: 'boolean' },
+                subscriptionTier: { type: 'string' },
+                maxMembers: { type: 'number' },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' },
+                ownerId: { type: 'string' }
+              }
+            }
           }
         }
       }
     },
-  }, async (request, reply) => {
-    try {
-      console.log(`[DEBUG] PUT /teams/:id: Updating team ${request.params.id}`);
-      
-      const team = await teamController.updateTeam(request, reply);
-      
-      // If reply was already sent, return as is
-      if (reply.sent) {
-        console.log(`[DEBUG] PUT /teams/:id: Reply already sent for ${request.params.id}`);
-        return team;
+    onRequest: [fastify.authenticate],
+    handler: async (request, reply) => {
+      try {
+        const { id } = request.params;
+        console.log(`[DEBUG] PUT /teams/:id: Updating team ${id}`);
+        
+        const team = await teamController.updateTeam(request, reply);
+        
+        if (reply.sent) {
+          console.log(`[DEBUG] PUT /teams/:id: Reply already sent`);
+          return;
+        }
+        
+        console.log(`[DEBUG] PUT /teams/:id: Formatting team response for ${id}`);
+        const formattedTeam = formatTeamResponse(team);
+        
+        console.log(`[DEBUG] PUT /teams/:id: Returning formatted response for ${id}`);
+        
+        // Wrap in data property for consistency with schema
+        return reply.send({ data: formattedTeam });
+      } catch (error) {
+        request.log.error(error, 'Error updating team');
+        return reply.code(500).send({ error: 'Failed to update team' });
       }
-      
-      // Format the response to include ownerId
-      console.log(`[DEBUG] PUT /teams/:id: Formatting team response for ${request.params.id}`);
-      const formattedTeam = await formatTeamResponse(team);
-      
-      console.log(`[DEBUG] PUT /teams/:id: Returning formatted response for ${request.params.id}`);
-      return reply.send(formattedTeam);
-    } catch (error) {
-      request.log.error(`Failed to update team: ${error}`);
-      return reply.status(500).send({ error: 'Failed to update team' });
     }
   });
 
   // Delete a team
   fastify.delete('/:id', {
+    preHandler: fastify.authenticate,
     schema: {
-      tags: ['teams'],
-      summary: 'Delete a team',
-      params: {
-        type: 'object',
-        required: ['id'],
-        properties: {
-          id: { type: 'string', format: 'uuid' }
-        }
-      },
+      params: teamIdParamSchema,
       response: {
-        204: {
-          type: 'null',
-          description: 'Team deleted successfully'
-        }
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        },
+        403: errorResponseSchema,
+        404: errorResponseSchema,
+        500: errorResponseSchema
       }
     },
-    handler: teamController.deleteTeam.bind(teamController)
+    async handler(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+      try {
+        const { id } = request.params;
+        console.log(`[DEBUG] DELETE /teams/:id: Deleting team ${id}`);
+        
+        const userId = request.user.id;
+        const result = await teamController.deleteTeam(id, userId);
+        
+        // Ensure we return the right status code
+        const statusCode = result.status || (result.success ? 200 : 500);
+        
+        if (result.success) {
+          return reply.code(statusCode).send({
+            success: true,
+            message: result.message || 'Team deleted successfully'
+          });
+        } else {
+          return reply.code(statusCode).send({ 
+            error: result.message || 'Failed to delete team'
+          });
+        }
+      } catch (error) {
+        console.error(`[ERROR] DELETE /teams/:id: Error deleting team:`, error);
+        return reply.code(500).send({ error: 'An error occurred while deleting the team' });
+      }
+    }
   });
 
   // Get team members
@@ -380,22 +489,123 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
       },
       response: {
         200: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              teamId: { type: 'string' },
-              userId: { type: 'string' },
-              role: { type: 'string', enum: ['owner', 'admin', 'member'] },
-              createdAt: { type: 'string', format: 'date-time' },
-              updatedAt: { type: 'string', format: 'date-time' },
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  teamId: { type: 'string' },
+                  userId: { type: 'string' },
+                  role: { type: 'string', enum: ['owner', 'admin', 'member'] },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time' },
+                }
+              }
             }
           }
         }
       }
     },
     handler: teamController.getTeamMembers.bind(teamController)
+  });
+
+  // Add a team member
+  fastify.post('/:id/members', {
+    schema: {
+      tags: ['teams'],
+      summary: 'Add a new member to a team',
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', format: 'uuid' }
+        }
+      },
+      body: {
+        type: 'object',
+        required: ['userId', 'role'],
+        properties: {
+          userId: { type: 'string', format: 'uuid' },
+          role: { type: 'string', enum: ['owner', 'admin', 'member'] }
+        }
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                teamId: { type: 'string' },
+                userId: { type: 'string' },
+                role: { type: 'string', enum: ['owner', 'admin', 'member'] },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' }
+              }
+            }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' }
+          }
+        },
+        403: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' }
+          }
+        },
+        500: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' }
+          }
+        }
+      }
+    },
+    handler: async (request: FastifyRequest<{ 
+      Params: { id: string },
+      Body: { userId: string, role: string }
+    }>, reply: FastifyReply) => {
+      try {
+        const { id } = request.params;
+        const { userId, role } = request.body;
+        const currentUserId = request.user.id;
+        
+        // Check if current user is admin or owner
+        const isAdminOrOwner = await teamService.hasTeamRole(id, currentUserId, 'admin') || 
+                               await teamService.hasTeamRole(id, currentUserId, 'owner');
+        
+        if (!isAdminOrOwner) {
+          return reply.code(403).send({ error: 'Only team admins and owners can add members' });
+        }
+        
+        // Add the member
+        const member = await teamService.addTeamMember({ 
+          teamId: id, 
+          userId, 
+          role: role as any 
+        });
+        
+        if (!member) {
+          return reply.code(400).send({ error: 'Failed to add team member' });
+        }
+        
+        return reply.code(201).send({ data: member });
+      } catch (error: any) {
+        request.log.error(error, 'Error adding team member');
+        return reply.code(500).send({ 
+          error: 'Failed to add team member',
+          message: error.message 
+        });
+      }
+    }
   });
 
   // Update a member's role
@@ -422,12 +632,17 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         200: {
           type: 'object',
           properties: {
-            id: { type: 'string' },
-            teamId: { type: 'string' },
-            userId: { type: 'string' },
-            role: { type: 'string', enum: ['owner', 'admin', 'member'] },
-            createdAt: { type: 'string', format: 'date-time' },
-            updatedAt: { type: 'string', format: 'date-time' },
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                teamId: { type: 'string' },
+                userId: { type: 'string' },
+                role: { type: 'string', enum: ['owner', 'admin', 'member'] },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' },
+              }
+            }
           }
         }
       }
@@ -556,12 +771,17 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         200: {
           type: 'object',
           properties: {
-            id: { type: 'string' },
-            name: { type: 'string' },
-            slug: { type: 'string' },
-            subscriptionTier: { type: 'string' },
-            maxMembers: { type: 'number' },
-            updatedAt: { type: 'string', format: 'date-time' },
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+                slug: { type: 'string' },
+                subscriptionTier: { type: 'string' },
+                maxMembers: { type: 'number' },
+                updatedAt: { type: 'string', format: 'date-time' },
+              }
+            }
           }
         }
       }
@@ -576,17 +796,22 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
       summary: 'Get all available subscription tiers',
       response: {
         200: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string', enum: ['free', 'basic', 'pro', 'enterprise'] },
-              maxMembers: { type: 'number' },
-              priceMonthly: { type: 'number' },
-              priceYearly: { type: 'number' },
-              features: { type: 'array', items: { type: 'string' } },
-              isTeamPlan: { type: 'boolean' },
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string', enum: ['free', 'basic', 'pro', 'enterprise'] },
+                  maxMembers: { type: 'number' },
+                  priceMonthly: { type: 'number' },
+                  priceYearly: { type: 'number' },
+                  features: { type: 'array', items: { type: 'string' } },
+                  isTeamPlan: { type: 'boolean' },
+                }
+              }
             }
           }
         }
@@ -600,22 +825,26 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
     const { id } = request.params as { id: string };
     const userId = request.user.id;
 
-    // Check if user is a team member
-    const isMember = await fastify.db.execute(
-      sql`SELECT EXISTS(
-        SELECT 1 FROM team_members
-        WHERE team_id = ${id} AND user_id = ${userId}
-      ) as is_member`
-    );
+    // Check if user is a team member using Supabase
+    const { data: memberData, error: memberError } = await supabaseAdmin
+      .from('team_members')
+      .select('*')
+      .eq('team_id', id)
+      .eq('user_id', userId)
+      .single();
 
-    if (!isMember[0]?.is_member) {
+    if (memberError || !memberData) {
       return reply.status(403).send({ error: 'Forbidden: You are not a member of this team' });
     }
 
-    // Get team details
-    const team = await teamController.getTeamById(request, reply);
-    
-    if (!team) {
+    // Get team details using Supabase
+    const { data: teamData, error: teamError } = await supabaseAdmin
+      .from('teams')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (teamError || !teamData) {
       return reply.status(404).send({ error: 'Team not found' });
     }
 
@@ -646,13 +875,13 @@ export const teamRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         support: 'dedicated'
       }
     };
-
+    
     // Return subscription details
     return {
       teamId: id,
-      subscriptionTier: team.subscriptionTier,
-      subscriptionId: team.subscriptionId,
-      features: features[team.subscriptionTier as keyof typeof features] || features.free
+      subscriptionTier: teamData.subscription_tier || 'free',
+      subscriptionId: teamData.subscription_id,
+      features: features[teamData.subscription_tier as keyof typeof features] || features.free
     };
   });
 };
