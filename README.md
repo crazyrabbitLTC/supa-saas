@@ -11,6 +11,7 @@ A comprehensive monorepo boilerplate for SaaS applications built with Supabase, 
 - **Database Management**: Type-safe database access with Supabase client and migrations
 - **Local Development**: Seamless local development with Supabase CLI
 - **Testing**: Comprehensive testing setup with Vitest for all components
+- **Row Level Security**: Complete RLS implementation for multi-tenant data isolation
 
 ## Supabase Integration
 
@@ -22,12 +23,15 @@ This boilerplate is built around Supabase as the primary backend service:
 - **Realtime**: WebSocket-based realtime subscriptions for live updates
 - **Edge Functions**: Serverless functions for backend logic
 - **Vector Search**: Support for AI-powered search using pgvector (coming soon)
+- **Row Level Security**: Comprehensive RLS policies for secure multi-tenant data access
 
 For detailed information about the Supabase integration, see [SUPABASE_INTEGRATION.md](docs/SUPABASE_INTEGRATION.md).
 
 For details on the migration from Drizzle ORM to Supabase, see [MIGRATION_FROM_DRIZZLE.md](docs/MIGRATION_FROM_DRIZZLE.md).
 
 For information about the type system, see [TYPE_SYSTEM.md](docs/TYPE_SYSTEM.md).
+
+For details on Row Level Security implementation, see [SUPABASE_RLS.md](SUPABASE_RLS.md).
 
 ### Type-Safe Database Access
 
@@ -174,6 +178,8 @@ Our testing approach follows these principles:
 2. **Real Dependencies**: API tests use a real Supabase instance for accurate testing
 3. **Immediate Verification**: Tests are run immediately after creation to catch issues early
 4. **Comprehensive Coverage**: All API endpoints have corresponding tests
+
+For detailed information about our testing approach and what has been tested, see [TESTING.md](TESTING.md).
 
 #### Test Structure
 
