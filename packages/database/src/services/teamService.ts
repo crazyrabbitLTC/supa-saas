@@ -154,9 +154,10 @@ class TeamService {
       .from('teams')
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .single();
     
     if (error) {
+      // PGRST116 is the error code for "no rows returned" in v2
       if (error.code === 'PGRST116') {
         return null;
       }
