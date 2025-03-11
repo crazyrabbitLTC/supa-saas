@@ -1,7 +1,19 @@
 {
   "name": "api",
   "version": "0.0.0",
+  "description": "High-performance API service for Supa-SaaS",
   "private": true,
+  "authors": [
+    {
+      "name": "Dennison Bertram",
+      "email": "dennison@dennisonbertram.com"
+    },
+    {
+      "name": "Claude",
+      "organization": "Anthropic"
+    }
+  ],
+  "license": "MIT",
   "scripts": {
     "build": "tsup",
     "clean": "rimraf .turbo node_modules dist",

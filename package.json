@@ -1,12 +1,28 @@
 {
   "name": "supa-saas",
   "version": "0.1.0",
+  "description": "A comprehensive monorepo boilerplate for SaaS applications built with Supabase, TypeScript, and Turborepo",
   "private": true,
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
   "packageManager": "pnpm@8.15.4",
+  "authors": [
+    {
+      "name": "Dennison Bertram",
+      "email": "dennison@dennisonbertram.com"
+    },
+    {
+      "name": "Claude",
+      "organization": "Anthropic"
+    }
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crazyrabbitLTC/supa-saas.git"
+  },
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",

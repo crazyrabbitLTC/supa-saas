@@ -1,7 +1,19 @@
 {
   "name": "database",
   "version": "0.0.0",
+  "description": "Database types and services for Supa-SaaS",
   "private": true,
+  "authors": [
+    {
+      "name": "Dennison Bertram",
+      "email": "dennison@dennisonbertram.com"
+    },
+    {
+      "name": "Claude",
+      "organization": "Anthropic"
+    }
+  ],
+  "license": "MIT",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
