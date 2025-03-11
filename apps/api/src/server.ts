@@ -44,6 +44,21 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Register routes
   registerRoutes(server);
   
+  // Log all registered routes
+  console.log('=== REGISTERED ROUTES ===');
+  const routes = server.printRoutes ? server.printRoutes() : server.getRoutes();
+  
+  if (typeof routes === 'string') {
+    // If printRoutes returns a string, log it directly
+    console.log(routes);
+  } else {
+    // If getRoutes returns an array, format and log each route
+    routes.forEach((route: any) => {
+      console.log(`${route.method} ${route.url}`);
+    });
+  }
+  console.log('=========================');
+  
   return server;
 }
 
