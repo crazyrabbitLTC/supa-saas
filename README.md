@@ -206,6 +206,13 @@ pnpm build
 - **Vitest**: For testing
 - **Zod**: For runtime type validation
 
+## Authors
+
+This project was created by:
+
+- **Dennison Bertram** - [dennison@dennisonbertram.com](mailto:dennison@dennisonbertram.com)
+- **Claude** - Anthropic's AI assistant
+
 ## License
 
-MIT 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
