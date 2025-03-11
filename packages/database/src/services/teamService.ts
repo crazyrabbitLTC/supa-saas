@@ -775,4 +775,3 @@ class TeamService {
 }
 
 export const teamService = new TeamService(); 
-export const teamService = new TeamService(); 
