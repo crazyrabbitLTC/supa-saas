@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ColorPaletteDemo } from "@/components/color-palette-demo"
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -39,10 +40,11 @@ export default function DesignDemo() {
       <p className="text-muted-foreground">A showcase of shadcn/ui components with our custom theme</p>
       
       <Tabs defaultValue="buttons" className="w-full">
-        <TabsList className="grid w-full md:w-[400px] grid-cols-3">
+        <TabsList className="grid w-full md:w-[400px] grid-cols-4">
           <TabsTrigger value="buttons">Buttons</TabsTrigger>
           <TabsTrigger value="cards">Cards</TabsTrigger>
           <TabsTrigger value="forms">Forms</TabsTrigger>
+          <TabsTrigger value="colors">Colors</TabsTrigger>
         </TabsList>
         
         <TabsContent value="buttons" className="space-y-4">
@@ -234,6 +236,64 @@ export default function DesignDemo() {
               <Button variant="outline" className="w-full">Sign In with Google</Button>
             </CardFooter>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="colors" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <ColorPaletteDemo />
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Text Colors</CardTitle>
+                <CardDescription>Text styling with neutral colors</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-neutral-950 dark:text-neutral-50">Text Neutral 950 / 50</p>
+                <p className="text-neutral-900 dark:text-neutral-100">Text Neutral 900 / 100</p>
+                <p className="text-neutral-800 dark:text-neutral-200">Text Neutral 800 / 200</p>
+                <p className="text-neutral-700 dark:text-neutral-300">Text Neutral 700 / 300</p>
+                <p className="text-neutral-600 dark:text-neutral-400">Text Neutral 600 / 400</p>
+                <p className="text-neutral-500">Text Neutral 500</p>
+                <p className="text-neutral-400 dark:text-neutral-600">Text Neutral 400 / 600</p>
+                <p className="text-neutral-300 dark:text-neutral-700">Text Neutral 300 / 700</p>
+                <p className="text-neutral-200 dark:text-neutral-800">Text Neutral 200 / 800</p>
+                <p className="text-neutral-100 dark:text-neutral-900">Text Neutral 100 / 900</p>
+                <p className="text-neutral-50 dark:text-neutral-950 bg-neutral-900 dark:bg-transparent">Text Neutral 50 / 950</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Border & Background</CardTitle>
+                <CardDescription>Neutral colors for borders and backgrounds</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <div className="h-12 bg-neutral-50 border border-neutral-200 rounded-md p-3">
+                    bg-neutral-50 (Background)
+                  </div>
+                  <div className="h-12 bg-neutral-100 border border-neutral-200 rounded-md p-3">
+                    bg-neutral-100 (Card)
+                  </div>
+                  <div className="h-12 bg-neutral-200 rounded-md p-3">
+                    bg-neutral-200 (Input, Border)
+                  </div>
+                  <div className="h-12 bg-neutral-300 rounded-md p-3 text-neutral-800">
+                    bg-neutral-300
+                  </div>
+                  <div className="h-12 bg-neutral-800 rounded-md p-3 text-white">
+                    bg-neutral-800 (Dark Mode Muted)
+                  </div>
+                  <div className="h-12 bg-neutral-900 rounded-md p-3 text-white">
+                    bg-neutral-900 (Dark Mode Card)
+                  </div>
+                  <div className="h-12 bg-neutral-950 rounded-md p-3 text-white">
+                    bg-neutral-950 (Dark Mode Background)
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
