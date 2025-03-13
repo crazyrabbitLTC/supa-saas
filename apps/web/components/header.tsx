@@ -41,9 +41,11 @@ export function Header() {
                 Sign In
               </Button>
             </Link>
-            <Button size="sm" className="hidden md:flex">
-              Get Started
-            </Button>
+            <Link href="/signup">
+              <Button size="sm" className="hidden md:flex">
+                Sign Up
+              </Button>
+            </Link>
           </nav>
         </div>
       </div>

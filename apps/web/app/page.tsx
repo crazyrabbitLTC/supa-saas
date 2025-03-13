@@ -37,9 +37,12 @@ export default function HomePage() {
           <CardContent>
             <p>Secure authentication powered by Supabase with a seamless login experience.</p>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex gap-3 flex-col">
             <Link href="/login" className="w-full">
               <Button variant="outline" className="w-full">Sign In</Button>
+            </Link>
+            <Link href="/signup" className="w-full">
+              <Button className="w-full">Create Account</Button>
             </Link>
           </CardFooter>
         </Card>
