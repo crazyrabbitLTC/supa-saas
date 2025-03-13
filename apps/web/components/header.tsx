@@ -68,38 +68,43 @@ export function Header() {
             {isLoading ? (
               <div className="h-8 w-8 rounded-full bg-neutral-200 animate-pulse"></div>
             ) : isAuthenticated ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                        {user?.email?.charAt(0).toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <div className="flex items-center justify-start gap-2 p-2">
-                    <div className="flex flex-col space-y-1 leading-none">
-                      <p className="font-medium">{user?.email}</p>
+              <>
+                <Button asChild variant="default" size="sm" className="mr-2">
+                  <Link href="/dashboard">Go to Dashboard</Link>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>
+                          {user?.email?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-1 leading-none">
+                        <p className="font-medium">{user?.email}</p>
+                      </div>
                     </div>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard">Dashboard</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings">Settings</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    className="cursor-pointer" 
-                    onClick={handleLogout}
-                  >
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard">Dashboard</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings">Settings</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="cursor-pointer" 
+                      onClick={handleLogout}
+                    >
+                      Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             ) : (
               <>
                 <Link href="/login">
