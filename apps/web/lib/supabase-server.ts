@@ -1,12 +1,11 @@
 /**
- * @file Supabase client for browser and server components
+ * @file Supabase client for server components
  * @version 1.0.0
  * 
  * This file provides utilities for initializing and using Supabase
- * in both server and client components.
+ * in server components.
  */
 
-import { createBrowserClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
@@ -19,14 +18,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
     'Missing environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set'
   )
-}
-
-/**
- * Creates a Supabase client for use in browser contexts
- * @returns Supabase client instance
- */
-export const createBrowserSupabaseClient = () => {
-  return createBrowserClient(supabaseUrl!, supabaseAnonKey!)
 }
 
 /**
@@ -43,10 +34,4 @@ export const createServerSupabaseClient = () => {
       },
     },
   })
-}
-
-/**
- * Gets a Supabase client for use in client components
- * This is a singleton instance that can be used throughout the client-side app
- */
-export const supabase = createBrowserSupabaseClient() 
+} 

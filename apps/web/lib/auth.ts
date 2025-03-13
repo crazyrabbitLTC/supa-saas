@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * @file Authentication service
  * @version 1.0.0
@@ -6,7 +8,7 @@
  * and session management using Supabase Auth.
  */
 
-import { createBrowserSupabaseClient } from './supabase'
+import { createBrowserSupabaseClient, browserSupabase } from './supabase-browser'
 
 type SignUpCredentials = {
   firstName: string
@@ -46,7 +48,7 @@ export const AuthService = {
     password,
   }: SignUpCredentials): Promise<SignUpResponse> {
     try {
-      const supabase = createBrowserSupabaseClient()
+      const supabase = browserSupabase
       
       // Register user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
@@ -98,7 +100,7 @@ export const AuthService = {
     password,
   }: LoginCredentials): Promise<LoginResponse> {
     try {
-      const supabase = createBrowserSupabaseClient()
+      const supabase = browserSupabase
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -135,7 +137,7 @@ export const AuthService = {
    */
   async logout(): Promise<{ success: boolean; error?: string }> {
     try {
-      const supabase = createBrowserSupabaseClient()
+      const supabase = browserSupabase
       
       const { error } = await supabase.auth.signOut()
 
@@ -162,7 +164,7 @@ export const AuthService = {
    */
   async getSession() {
     try {
-      const supabase = createBrowserSupabaseClient()
+      const supabase = browserSupabase
       
       const { data, error } = await supabase.auth.getSession()
 
