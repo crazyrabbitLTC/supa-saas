@@ -36,9 +36,11 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end space-x-4">
           <nav className="flex items-center space-x-2">
             <ModeToggle />
-            <Button variant="outline" size="sm" className="hidden md:flex">
-              Sign In
-            </Button>
+            <Link href="/login">
+              <Button variant="outline" size="sm" className="hidden md:flex">
+                Sign In
+              </Button>
+            </Link>
             <Button size="sm" className="hidden md:flex">
               Get Started
             </Button>

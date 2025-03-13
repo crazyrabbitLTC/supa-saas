@@ -38,7 +38,9 @@ export default function HomePage() {
             <p>Secure authentication powered by Supabase with a seamless login experience.</p>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" className="w-full">Sign In</Button>
+            <Link href="/login" className="w-full">
+              <Button variant="outline" className="w-full">Sign In</Button>
+            </Link>
           </CardFooter>
         </Card>
         
