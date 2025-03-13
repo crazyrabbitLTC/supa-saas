@@ -1,6 +1,7 @@
 "use client"
 
 import { AppSidebar } from "@/components/app-sidebar"
+import { DashboardHeader } from "@/components/dashboard-header"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { DashboardDebug } from "@/components/dashboard-debug"
 
@@ -18,8 +19,11 @@ export default function DashboardLayout({
             {/* Main Content with Sidebar */}
             <div className="flex flex-1 overflow-hidden">
               <AppSidebar />
-              <div className="flex-1 overflow-auto">
-                {children}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <DashboardHeader />
+                <div className="flex-1 overflow-auto">
+                  {children}
+                </div>
               </div>
             </div>
 
