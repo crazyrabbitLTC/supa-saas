@@ -1,7 +1,7 @@
-# Signup Component Implementation Plan
+# Authentication Implementation Plan
 
 ## Overview
-This document outlines the tasks needed to connect the signup component to the Supabase authentication backend.
+This document outlines the tasks needed to connect the signup and login components to the Supabase authentication backend.
 
 ## Checklist
 
@@ -19,24 +19,28 @@ This document outlines the tasks needed to connect the signup component to the S
 ### Backend Connection
 - [x] Create authentication service for signup, login, and logout
 - [x] Implement signup functionality with Supabase
-- [x] Add error handling for various signup scenarios
+- [x] Implement login functionality with Supabase
+- [x] Add error handling for various authentication scenarios
 - [x] Connect signup form submission to the authentication service
+- [x] Connect login form submission to the authentication service
 
-### Post-Signup Flow
+### Post-Authentication Flow
 - [x] Add redirect to dashboard after successful signup
+- [x] Add redirect to dashboard after successful login
 - [x] Implement session management
 - [ ] Create loading state during team creation
 
 ### Testing
 - [ ] Test signup with valid credentials
+- [ ] Test login with valid credentials
 - [ ] Test validation error handling
 - [ ] Test server error handling
-- [ ] Test post-signup navigation
+- [ ] Test post-authentication navigation
 
 ### Cleanup & Documentation
 - [ ] Clean up any console logs
 - [ ] Add comments for complex logic
-- [x] Update README with new signup flow details
+- [x] Update README with new authentication flow details
 - [ ] Document known edge cases or issues
 
 ## Implementation Details
@@ -48,11 +52,18 @@ This document outlines the tasks needed to connect the signup component to the S
 4. Display appropriate error messages
 5. Redirect to dashboard upon successful signup
 
+### Login Form Component Requirements
+1. Collect email and password
+2. Validate fields before submission
+3. Prevent multiple submissions
+4. Display appropriate error messages
+5. Redirect to dashboard upon successful login
+
 ### Authentication Service Responsibilities
 1. Handle communication with Supabase Auth API
 2. Manage user session data
 3. Provide error handling for auth-related operations
-4. Support sign-up with email/password (required)
+4. Support sign-up and login with email/password (required)
 5. Support social authentication (optional)
 
 ### Security Considerations
