@@ -1,46 +1,62 @@
-export default function Page() {
+'use client'
+
+/**
+ * @file Dashboard page
+ * @version 1.0.0
+ * 
+ * A protected dashboard page that requires authentication
+ */
+
+import { ProtectedRoute } from '@/components/protected-route'
+import { useAuth } from '@/components/providers/auth-provider'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
+
+export default function DashboardPage() {
+  const { user } = useAuth()
+
   return (
-    <main id="dashboard-page" data-component="dashboard-page" className="dashboard-main flex flex-1 flex-col gap-4 p-4 bg-white">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold mb-2 text-neutral-900">Welcome to your Dashboard</h1>
-        <p className="text-neutral-600">Here's an overview of your recent activity and stats.</p>
+    <ProtectedRoute>
+      <div className="container py-10">
+        <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+        
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Welcome, {user?.email}</CardTitle>
+              <CardDescription>
+                This is your personal dashboard, a protected area that requires authentication.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">
+                You are now logged in to the application. This page is only accessible to authenticated users.
+              </p>
+              <Button asChild>
+                <Link href="/settings">Manage Your Account</Link>
+              </Button>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Getting Started</CardTitle>
+              <CardDescription>
+                Some helpful resources to get you started
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc list-inside space-y-2">
+                <li>Update your profile information</li>
+                <li>Explore the application features</li>
+                <li>Configure your preferences</li>
+                <li>Invite team members</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-        <div className="aspect-video rounded-xl bg-neutral-100 border border-neutral-200 p-4 flex flex-col">
-          <h3 className="font-medium text-neutral-900 mb-1">Total Users</h3>
-          <p className="text-2xl font-bold text-neutral-900">2,458</p>
-          <span className="text-sm text-neutral-500 mt-auto">+12% from last week</span>
-        </div>
-        <div className="aspect-video rounded-xl bg-neutral-100 border border-neutral-200 p-4 flex flex-col">
-          <h3 className="font-medium text-neutral-900 mb-1">Revenue</h3>
-          <p className="text-2xl font-bold text-neutral-900">$12,580</p>
-          <span className="text-sm text-neutral-500 mt-auto">+8% from last month</span>
-        </div>
-        <div className="aspect-video rounded-xl bg-neutral-100 border border-neutral-200 p-4 flex flex-col">
-          <h3 className="font-medium text-neutral-900 mb-1">Active Projects</h3>
-          <p className="text-2xl font-bold text-neutral-900">18</p>
-          <span className="text-sm text-neutral-500 mt-auto">3 added this week</span>
-        </div>
-      </div>
-      <div className="min-h-[40vh] flex-1 rounded-xl bg-neutral-100 border border-neutral-200 md:min-h-min p-4">
-        <h2 className="text-lg font-semibold mb-4 text-neutral-900">Recent Activity</h2>
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map((item) => (
-            <div key={item} className="flex items-center justify-between p-3 border border-neutral-200 bg-white rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-neutral-700">
-                  {item}
-                </div>
-                <div>
-                  <h4 className="font-medium text-neutral-900">Activity Item {item}</h4>
-                  <p className="text-sm text-neutral-500">Updated {item} hour{item !== 1 ? 's' : ''} ago</p>
-                </div>
-              </div>
-              <span className="text-neutral-500 text-sm">Details</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </main>
+    </ProtectedRoute>
   )
 } 

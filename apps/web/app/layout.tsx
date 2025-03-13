@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { ToastProvider } from "@/components/providers/toast-provider"
+import { AuthProvider } from "@/components/providers/auth-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -26,12 +27,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="relative flex min-h-screen flex-col">
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
-          <ToastProvider />
+          <AuthProvider>
+            <div className="relative flex min-h-screen flex-col">
+              <Header />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </div>
+            <ToastProvider />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
