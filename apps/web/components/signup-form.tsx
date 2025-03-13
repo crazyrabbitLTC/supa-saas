@@ -30,6 +30,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
 import Link from "next/link"
 import { SignupFormData, signupSchema } from '@/lib/validations/auth'
 import { AuthService } from '@/lib/auth'
@@ -232,7 +233,14 @@ export function SignupForm({
                   className="w-full"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Creating Account...' : 'Create Account'}
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Spinner size="sm" className="text-white" />
+                      Creating Account...
+                    </span>
+                  ) : (
+                    'Create Account'
+                  )}
                 </Button>
               </div>
               <div className="text-center text-sm">
