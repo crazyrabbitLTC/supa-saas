@@ -10,6 +10,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { AuthService } from '@/lib/auth'
 import { Session, User } from '@supabase/supabase-js'
+import { browserSupabase } from '@/lib/supabase-browser'
 
 type AuthContextType = {
   session: Session | null
@@ -52,8 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchSession()
 
     // Subscribe to auth state changes
-    const { browserSupabase } = require('@/lib/supabase-browser')
-    
     const {
       data: { subscription },
     } = browserSupabase.auth.onAuthStateChange((event, newSession) => {
