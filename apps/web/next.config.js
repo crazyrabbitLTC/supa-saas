@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["config"],
   eslint: {
-    dirs: ['src'],
+    dirs: ['src', 'app', 'components', 'lib'],
   },
 };
 

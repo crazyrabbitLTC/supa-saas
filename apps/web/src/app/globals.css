@@ -21,81 +21,104 @@ body {
 
 @layer base {
   :root {
-    /* Primary Colors - Material Indigo */
-    --primary: 231 48% 48%;
-    --primary-light: 231 48% 63%;
-    --primary-dark: 231 48% 43%;
+    /* Neutral colors as the base of the design system */
+    --neutral-50: 210 40% 98%;
+    --neutral-100: 210 40% 96%;
+    --neutral-200: 214 32% 91%;
+    --neutral-300: 213 27% 84%;
+    --neutral-400: 215 20% 65%;
+    --neutral-500: 215 16% 47%;
+    --neutral-600: 215 19% 35%;
+    --neutral-700: 215 25% 27%;
+    --neutral-800: 217 33% 17%;
+    --neutral-900: 222 47% 11%;
+    --neutral-950: 224 71% 4%;
     
-    /* Secondary Colors - Material Cyan */
-    --secondary: 187 100% 42%;
-    --secondary-light: 187 70% 56%;
-    --secondary-dark: 187 100% 32%;
+    /* Primary and accent colors based on neutral */
+    --primary: 222 47% 40%;
+    --primary-foreground: 210 40% 98%;
     
-    /* Accent Colors - Material Purple */
-    --accent: 291 76% 42%;
-    --accent-light: 291 71% 72%;
-    --accent-dark: 291 76% 38%;
+    --secondary: 215 16% 47%;
+    --secondary-foreground: 210 40% 98%;
     
-    /* Semantic Colors */
-    --success: 122 39% 49%;
-    --success-light: 122 39% 74%;
-    --success-dark: 122 39% 38%;
+    --accent: 215 25% 27%;
+    --accent-foreground: 210 40% 98%;
     
-    --warning: 45 100% 51%;
-    --warning-light: 45 100% 75%;
-    --warning-dark: 45 100% 38%;
+    /* Semantic colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
     
-    --destructive: 4 90% 58%;
-    --destructive-light: 4 83% 77%;
-    --destructive-dark: 4 90% 43%;
+    --success: 142 69% 45%;
+    --success-foreground: 210 40% 98%;
     
-    --info: 207 90% 54%;
-    --info-light: 207 90% 77%;
-    --info-dark: 207 90% 43%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 210 40% 98%;
     
-    /* Neutral Color Palette */
-    --neutral-50: 0 0% 98%;
-    --neutral-100: 0 0% 96%;
-    --neutral-200: 0 0% 90%;
-    --neutral-300: 0 0% 83%;
-    --neutral-400: 0 0% 64%;
-    --neutral-500: 0 0% 45%;
-    --neutral-600: 0 0% 32%;
-    --neutral-700: 0 0% 25%;
-    --neutral-800: 0 0% 15%;
-    --neutral-900: 0 0% 9%;
-    --neutral-950: 0 0% 4%;
+    --info: 220 70% 50%;
+    --info-foreground: 210 40% 98%;
     
-    /* Functional Colors - Using Neutral Palette */
+    /* Functional Colors */
     --background: var(--neutral-50);
     --foreground: var(--neutral-900);
+    
     --card: var(--neutral-100);
     --card-foreground: var(--neutral-900);
+    
     --popover: var(--neutral-100);
     --popover-foreground: var(--neutral-900);
+    
     --muted: var(--neutral-100);
     --muted-foreground: var(--neutral-500);
+    
     --border: var(--neutral-200);
     --input: var(--neutral-200);
+    
     --ring: var(--primary);
+    
+    /* Sidebar specific colors */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-muted: 210 40% 96%;
+    --sidebar-muted-foreground: 215 16% 47%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-primary: 214 32% 91%;
+    --sidebar-primary-foreground: 222 47% 11%;
     
     /* Other */
     --radius: 0.5rem;
   }
 
   .dark {
-    /* Functional Colors for Dark Mode - Using Neutral Palette */
+    /* Dark mode values */
     --background: var(--neutral-950);
     --foreground: var(--neutral-50);
+    
     --card: var(--neutral-900);
     --card-foreground: var(--neutral-50);
+    
     --popover: var(--neutral-900);
     --popover-foreground: var(--neutral-50);
+    
     --muted: var(--neutral-800);
     --muted-foreground: var(--neutral-400);
+    
     --border: var(--neutral-800);
     --input: var(--neutral-800);
-    --ring: var(--primary-light);
+    
+    --ring: var(--primary);
+    
+    /* Sidebar dark mode colors */
+    --sidebar: 224 71% 4%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-muted: 217 33% 17%;
+    --sidebar-muted-foreground: 215 20% 65%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 215 25% 27%;
+    --sidebar-primary: 215 25% 27%;
+    --sidebar-primary-foreground: 210 40% 98%;
   }
 }
 
