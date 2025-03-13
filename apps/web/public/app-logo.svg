@@ -1,0 +1,10 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background square with rounded corners -->
+  <rect width="40" height="40" rx="8" fill="#4F46E5" />
+  
+  <!-- Letter S shapes -->
+  <path d="M14.5 12C14.5 10.8954 15.3954 10 16.5 10H23.5C24.6046 10 25.5 10.8954 25.5 12V14C25.5 15.1046 24.6046 16 23.5 16H16.5C15.3954 16 14.5 16.8954 14.5 18V20C14.5 21.1046 15.3954 22 16.5 22H23.5C24.6046 22 25.5 21.1046 25.5 20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Letter S shapes for the second S -->
+  <path d="M14.5 26C14.5 24.8954 15.3954 24 16.5 24H23.5C24.6046 24 25.5 24.8954 25.5 26V28C25.5 29.1046 24.6046 30 23.5 30H16.5C15.3954 30 14.5 30.8954 14.5 32V34C14.5 35.1046 15.3954 36 16.5 36H23.5C24.6046 36 25.5 35.1046 25.5 34" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg> 

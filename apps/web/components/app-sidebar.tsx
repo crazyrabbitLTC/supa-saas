@@ -35,6 +35,7 @@ import {
   SidebarMenuItem,
   SidebarGroup,
   SidebarGroupLabel,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -171,12 +172,15 @@ export function AppSidebar() {
         <ScrollArea className="h-full pb-12">
           <SidebarGroup className="px-3 pb-1.5 pt-3">
             <div className="flex items-center gap-2 px-2.5">
-              <Avatar className="size-7 rounded-sm">
-                <AvatarImage src="/app-logo.svg" alt="App Logo" />
-                <AvatarFallback className="rounded-sm bg-neutral-100 text-neutral-900">
-                  SP
-                </AvatarFallback>
-              </Avatar>
+              <div className="flex items-center gap-2">
+                <SidebarTrigger className="md:hidden" />
+                <Avatar className="size-7 rounded-sm">
+                  <AvatarImage src="/app-logo.svg" alt="App Logo" />
+                  <AvatarFallback className="rounded-sm bg-neutral-100 text-neutral-900">
+                    SP
+                  </AvatarFallback>
+                </Avatar>
+              </div>
               <div>
                 <div className="text-sm font-semibold text-neutral-900">
                   Supa SaaS
@@ -244,7 +248,7 @@ export function AppSidebar() {
           <Link href="/dashboard/profile" className="block">
             <div className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-100 transition-colors rounded-md cursor-pointer">
               <Avatar className="size-9">
-                <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                <AvatarImage src="/placeholder-user.svg" alt="User" />
                 <AvatarFallback className="text-neutral-900 bg-neutral-100">
                   JD
                 </AvatarFallback>
