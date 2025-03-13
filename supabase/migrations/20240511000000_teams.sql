@@ -5,6 +5,39 @@
 CREATE TYPE public.team_role AS ENUM ('owner', 'admin', 'member');
 CREATE TYPE public.subscription_tier AS ENUM ('free', 'basic', 'pro', 'enterprise');
 
+-- Create function to check if a user is a team member
+CREATE OR REPLACE FUNCTION public.is_team_member(team_id UUID, user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.team_members tm
+    WHERE tm.team_id = $1 AND tm.user_id = $2
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create function to check if a user has a specific role in a team
+CREATE OR REPLACE FUNCTION public.has_team_role(team_id UUID, user_id UUID, required_role team_role)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.team_members tm
+    WHERE tm.team_id = $1 AND tm.user_id = $2 AND tm.role = $3
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create function to check if a user has one of the specified roles in a team
+CREATE OR REPLACE FUNCTION public.has_team_roles(team_id UUID, user_id UUID, required_roles team_role[])
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.team_members tm
+    WHERE tm.team_id = $1 AND tm.user_id = $2 AND tm.role = ANY($3)
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Create Teams Table
 CREATE TABLE public.teams (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -294,99 +327,116 @@ ALTER TABLE public.subscription_tiers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_analytics ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for Teams Table
+-- Allow users to view teams they belong to
 CREATE POLICY "Users can view teams they belong to" ON public.teams
-FOR SELECT USING (
-  id IN (
-    SELECT team_id FROM public.team_members WHERE user_id = auth.uid()
-  )
+FOR SELECT
+TO authenticated
+USING (
+  public.is_team_member(id, auth.uid())
 );
 
+-- Allow authenticated users to create teams
 CREATE POLICY "Users can create teams" ON public.teams
-FOR INSERT WITH CHECK (
+FOR INSERT
+TO authenticated
+WITH CHECK (
   auth.uid() IS NOT NULL AND is_personal = FALSE
 );
 
+-- Allow team owners to update their teams
 CREATE POLICY "Team owners can update their teams" ON public.teams
-FOR UPDATE USING (
-  id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role = 'owner'
-  )
+FOR UPDATE
+TO authenticated
+USING (
+  public.has_team_role(id, auth.uid(), 'owner'::team_role)
 );
 
+-- Allow team owners to delete non-personal teams
 CREATE POLICY "Team owners can delete non-personal teams" ON public.teams
-FOR DELETE USING (
-  id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role = 'owner'
-  ) AND is_personal = FALSE
+FOR DELETE
+TO authenticated
+USING (
+  is_personal = FALSE AND
+  public.has_team_role(id, auth.uid(), 'owner'::team_role)
 );
 
 -- RLS Policies for Team Members Table
+-- Create a policy for the authenticated user to see their own team memberships
+CREATE POLICY "Users can view their own team memberships" ON public.team_members
+FOR SELECT
+TO authenticated
+USING (
+  user_id = auth.uid()
+);
+
+-- Create a policy for users to see team members of teams they belong to
 CREATE POLICY "Users can view members of teams they belong to" ON public.team_members
-FOR SELECT USING (
-  team_id IN (
-    SELECT team_id FROM public.team_members WHERE user_id = auth.uid()
-  )
+FOR SELECT
+TO authenticated
+USING (
+  public.is_team_member(team_id, auth.uid())
 );
 
+-- Allow team owners and admins to add members
 CREATE POLICY "Team owners and admins can add members" ON public.team_members
-FOR INSERT WITH CHECK (
-  team_id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-  )
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  public.has_team_roles(team_id, auth.uid(), ARRAY['owner', 'admin']::team_role[])
 );
 
+-- Allow team owners to update member roles
 CREATE POLICY "Team owners can update member roles" ON public.team_members
-FOR UPDATE USING (
-  team_id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role = 'owner'
-  )
+FOR UPDATE
+TO authenticated
+USING (
+  public.has_team_role(team_id, auth.uid(), 'owner'::team_role)
 );
 
+-- Allow team admins to update non-owner and non-admin roles
 CREATE POLICY "Team admins can update non-owner and non-admin roles" ON public.team_members
-FOR UPDATE USING (
-  team_id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role = 'admin'
-  )
-) WITH CHECK (
+FOR UPDATE
+TO authenticated
+USING (
+  public.has_team_role(team_id, auth.uid(), 'admin'::team_role)
+) 
+WITH CHECK (
   role = 'member'
 );
 
+-- Allow team owners and admins to remove members
 CREATE POLICY "Team owners and admins can remove members" ON public.team_members
-FOR DELETE USING (
-  team_id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-  ) AND user_id != auth.uid() -- Cannot remove yourself
+FOR DELETE
+TO authenticated
+USING (
+  user_id != auth.uid() AND
+  public.has_team_roles(team_id, auth.uid(), ARRAY['owner', 'admin']::team_role[])
 );
 
 -- RLS Policies for Team Invitations Table
+-- Allow team owners and admins to create invitations
 CREATE POLICY "Team owners and admins can create invitations" ON public.team_invitations
-FOR INSERT WITH CHECK (
-  team_id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-  ) AND created_by = auth.uid()
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  created_by = auth.uid() AND
+  public.has_team_roles(team_id, auth.uid(), ARRAY['owner', 'admin']::team_role[])
 );
 
+-- Allow team owners and admins to view invitations
 CREATE POLICY "Team owners and admins can view invitations" ON public.team_invitations
-FOR SELECT USING (
-  team_id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-  )
+FOR SELECT
+TO authenticated
+USING (
+  public.has_team_roles(team_id, auth.uid(), ARRAY['owner', 'admin']::team_role[])
 );
 
+-- Allow team owners and admins to delete invitations
 CREATE POLICY "Team owners and admins can delete invitations" ON public.team_invitations
-FOR DELETE USING (
-  team_id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-  )
+FOR DELETE
+TO authenticated
+USING (
+  public.has_team_roles(team_id, auth.uid(), ARRAY['owner', 'admin']::team_role[])
 );
 
 -- RLS Policies for Subscription Tiers Table
@@ -394,35 +444,13 @@ CREATE POLICY "Anyone can view subscription tiers" ON public.subscription_tiers
 FOR SELECT USING (true);
 
 -- RLS Policies for Team Analytics Table
+-- Allow team owners and admins to view team analytics
 CREATE POLICY "Team owners and admins can view team analytics" ON public.team_analytics
-FOR SELECT USING (
-  team_id IN (
-    SELECT team_id FROM public.team_members 
-    WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-  )
+FOR SELECT
+TO authenticated
+USING (
+  public.has_team_roles(team_id, auth.uid(), ARRAY['owner', 'admin']::team_role[])
 );
-
--- Create function to check if a user is a team member
-CREATE OR REPLACE FUNCTION public.is_team_member(team_id UUID, user_id UUID)
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.team_members
-    WHERE team_id = $1 AND user_id = $2
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Create function to check if a user has a specific role in a team
-CREATE OR REPLACE FUNCTION public.has_team_role(team_id UUID, user_id UUID, required_role team_role)
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.team_members
-    WHERE team_id = $1 AND user_id = $2 AND role = $3
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create function to get a user's teams
 CREATE OR REPLACE FUNCTION public.get_user_teams(user_id UUID)
