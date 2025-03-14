@@ -34,7 +34,7 @@ export default function DashboardPage() {
                 You are now logged in to the application. This page is only accessible to authenticated users.
               </p>
               <Button asChild>
-                <Link href="/settings">Manage Your Account</Link>
+                <Link href="/dashboard/settings">Manage Your Account</Link>
               </Button>
             </CardContent>
           </Card>
