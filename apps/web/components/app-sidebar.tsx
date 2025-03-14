@@ -41,6 +41,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/providers/auth-provider"
+import { ModeToggle } from "@/components/mode-toggle"
 
 const data = {
   user: {
@@ -190,34 +191,35 @@ export function AppSidebar() {
   };
   
   return (
-    <div className="h-full border-r border-neutral-200 bg-white overflow-hidden">
+    <div className="h-full border-r border-neutral-200 bg-white dark:bg-gray-950 dark:border-gray-800 overflow-hidden">
       <Sidebar className="h-full">
         <ScrollArea className="h-full pb-12">
           <SidebarGroup className="px-3 pb-1.5 pt-3">
-            <div className="flex items-center gap-2 px-2.5">
+            <div className="flex items-center justify-between px-2.5">
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="md:hidden" />
                 <Avatar className="size-7 rounded-sm">
                   <AvatarImage src="/app-logo.svg" alt="App Logo" />
-                  <AvatarFallback className="rounded-sm bg-neutral-100 text-neutral-900">
+                  <AvatarFallback className="rounded-sm bg-neutral-100 text-neutral-900 dark:bg-gray-800 dark:text-gray-100">
                     SP
                   </AvatarFallback>
                 </Avatar>
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-neutral-900">
-                  Supa SaaS
+                <div>
+                  <div className="text-sm font-semibold text-neutral-900 dark:text-gray-100">
+                    Supa SaaS
+                  </div>
+                  <div className="text-xs text-neutral-500 dark:text-gray-400">
+                    Dashboard
+                  </div>
                 </div>
-                <div className="text-xs text-neutral-500">
-                  Dashboard
-                </div>
               </div>
+              <ModeToggle />
             </div>
           </SidebarGroup>
 
           <SidebarGroup className="px-3 py-1.5">
             <SidebarMenu>
-              <SidebarMenuButton asChild className="bg-neutral-200 text-neutral-700 hover:bg-neutral-300 hover:text-neutral-900">
+              <SidebarMenuButton asChild className="bg-neutral-200 text-neutral-700 hover:bg-neutral-300 hover:text-neutral-900 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100">
                 <Link href="/dashboard">
                   <LayoutDashboard className="size-4" />
                   Dashboard
@@ -269,13 +271,13 @@ export function AppSidebar() {
 
         <SidebarFooter>
           <Link href="/dashboard/profile" className="block">
-            <div className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-100 transition-colors rounded-md cursor-pointer">
+            <div className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-100 dark:hover:bg-gray-800 transition-colors rounded-md cursor-pointer">
               {isLoading ? (
-                <div className="size-9 rounded-full bg-neutral-200 animate-pulse"></div>
+                <div className="size-9 rounded-full bg-neutral-200 dark:bg-gray-700 animate-pulse"></div>
               ) : (
                 <Avatar className="size-9">
                   <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder-user.svg"} alt="User" />
-                  <AvatarFallback className="text-neutral-900 bg-neutral-100">
+                  <AvatarFallback className="text-neutral-900 bg-neutral-100 dark:bg-gray-800 dark:text-gray-100">
                     {getUserInitials()}
                   </AvatarFallback>
                 </Avatar>
@@ -283,15 +285,15 @@ export function AppSidebar() {
               <div className="grid gap-0.5">
                 {isLoading ? (
                   <>
-                    <div className="h-4 w-24 bg-neutral-200 rounded animate-pulse"></div>
-                    <div className="h-3 w-32 bg-neutral-200 rounded animate-pulse"></div>
+                    <div className="h-4 w-24 bg-neutral-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    <div className="h-3 w-32 bg-neutral-200 dark:bg-gray-700 rounded animate-pulse"></div>
                   </>
                 ) : (
                   <>
-                    <div className="text-sm font-medium text-neutral-900">
+                    <div className="text-sm font-medium text-neutral-900 dark:text-gray-100">
                       {getDisplayName()}
                     </div>
-                    <div className="text-xs text-neutral-500 truncate max-w-[120px]">
+                    <div className="text-xs text-neutral-500 dark:text-gray-400 truncate max-w-[120px]">
                       {user?.email || "loading..."}
                     </div>
                   </>
