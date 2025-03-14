@@ -211,4 +211,4 @@ export function isCookiesApiAvailable(): boolean {
   } catch (error) {
     return false
   }
-}
+} 

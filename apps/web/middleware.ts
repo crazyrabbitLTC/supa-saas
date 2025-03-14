@@ -1,6 +1,6 @@
 /**
  * @file Next.js Middleware
- * @version 1.3.0
+ * @version 1.4.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -21,6 +21,18 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createMiddlewareSupabaseClient } from './lib/supabase-server'
 import { CSRF_TOKEN_HEADER, CSRF_TOKEN_COOKIE } from './lib/csrf'
+import { 
+  safeGetCookieWithPrefixes, 
+  createErrorResponse, 
+  createErrorRedirect,
+  safeAuthMiddleware
+} from './lib/middleware-error-handler'
+import { 
+  createCSRFError, 
+  CSRFErrorCode, 
+  createAuthError, 
+  AuthErrorCode 
+} from './lib/error-handler'
 
 // Check if in development environment
 const isDev = process.env.NODE_ENV === 'development'
@@ -104,13 +116,92 @@ function validateCSRFToken(token: string, storedToken: string): boolean {
 }
 
 /**
+ * Handle CSRF validation for protected routes
+ * @param request - NextRequest object
+ * @param pathname - Current path
+ * @returns Error response or null if validation passes
+ */
+function handleCSRFValidation(request: NextRequest, pathname: string): NextResponse | null {
+  if (!requiresCSRFProtection(pathname)) {
+    return null
+  }
+  
+  const csrfToken = request.headers.get(CSRF_TOKEN_HEADER)
+  const storedToken = safeGetCookieWithPrefixes(request, CSRF_TOKEN_COOKIE)
+  
+  // Skip CSRF check in development but log warning
+  if (isDev && (!csrfToken || !storedToken)) {
+    console.warn(`[Middleware] CSRF token missing for protected route: ${pathname}`)
+    return null
+  } 
+  
+  // In production, require CSRF token
+  if (!isDev && (!csrfToken || !storedToken)) {
+    const error = createCSRFError(
+      'CSRF token validation failed: Token missing',
+      CSRFErrorCode.MISSING_TOKEN
+    )
+    return createErrorResponse(error)
+  }
+  
+  // In production, perform actual token validation
+  if (!isDev && csrfToken && storedToken) {
+    const isValid = validateCSRFToken(csrfToken, storedToken)
+    
+    if (!isValid) {
+      const error = createCSRFError(
+        'CSRF token validation failed: Invalid token',
+        CSRFErrorCode.INVALID_TOKEN
+      )
+      return createErrorResponse(error)
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Authentication handler for middleware
+ * @param request - NextRequest object
+ * @param response - NextResponse object
+ * @returns NextResponse
+ */
+async function authHandler(request: NextRequest, response: NextResponse): Promise<NextResponse> {
+  const { supabase, response: supabaseResponse } = createMiddlewareSupabaseClient(request, response)
+  
+  if (!supabase) {
+    throw new Error('Failed to create Supabase client')
+  }
+  
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  
+  // If not authenticated and trying to access protected route
+  if (!session) {
+    const error = createAuthError(
+      'Authentication required',
+      AuthErrorCode.SESSION_EXPIRED
+    )
+    
+    // Redirect to login with return URL
+    const redirectUrl = new URL('/login', request.url)
+    return createErrorRedirect(redirectUrl.toString(), error, {
+      redirectedFrom: request.nextUrl.pathname + request.nextUrl.search
+    })
+  }
+  
+  // User is authenticated, allow access
+  return supabaseResponse
+}
+
+/**
  * Middleware function executed on each request
  * @param request - NextRequest object
  * @returns NextResponse or undefined
  */
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
-  const fullPath = `${pathname}${search}`
   
   // Create a response to handle cookie modifications
   const response = NextResponse.next()
@@ -126,79 +217,14 @@ export async function middleware(request: NextRequest) {
     return response
   }
   
-  // CSRF protection for sensitive API routes
-  if (requiresCSRFProtection(pathname)) {
-    const csrfToken = request.headers.get(CSRF_TOKEN_HEADER)
-    const storedToken = request.cookies.get(CSRF_TOKEN_COOKIE)?.value
-    
-    // Skip CSRF check in development but log warning
-    if (isDev && (!csrfToken || !storedToken)) {
-      console.warn(`[Middleware] CSRF token missing for protected route: ${pathname}`)
-    } else if (!isDev && (!csrfToken || !storedToken)) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: {
-            message: 'CSRF token validation failed',
-            code: 'CSRF_MISSING',
-            status: 403
-          }
-        },
-        { status: 403 }
-      )
-    }
-    
-    // In production, perform actual token validation
-    if (!isDev && csrfToken && storedToken) {
-      const isValid = validateCSRFToken(csrfToken, storedToken)
-      
-      if (!isValid) {
-        return NextResponse.json(
-          { 
-            success: false,
-            error: {
-              message: 'CSRF token validation failed',
-              code: 'CSRF_INVALID',
-              status: 403
-            }
-          },
-          { status: 403 }
-        )
-      }
-    }
+  // CSRF validation for protected routes
+  const csrfValidationResult = handleCSRFValidation(request, pathname)
+  if (csrfValidationResult) {
+    return csrfValidationResult
   }
   
-  try {
-    // Create server client to check authentication
-    const { supabase, response: supabaseResponse } = createMiddlewareSupabaseClient(request, response)
-    
-    if (!supabase) {
-      throw new Error('Failed to create Supabase client')
-    }
-    
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    
-    // If not authenticated and trying to access protected route
-    if (!session) {
-      // Redirect to login with return URL
-      const redirectUrl = new URL('/login', request.url)
-      redirectUrl.searchParams.set('redirectedFrom', fullPath)
-      return NextResponse.redirect(redirectUrl)
-    }
-    
-    // User is authenticated, allow access
-    return supabaseResponse
-  } catch (error) {
-    console.error('[Middleware] Authentication error:', error)
-    
-    // Handle error gracefully - proceed to login in case of auth errors
-    const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('redirectedFrom', fullPath)
-    redirectUrl.searchParams.set('error', 'auth_error')
-    return NextResponse.redirect(redirectUrl)
-  }
+  // Handle authentication with error handling
+  return safeAuthMiddleware(request, response, authHandler)
 }
 
 /**
