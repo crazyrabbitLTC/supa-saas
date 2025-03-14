@@ -1,6 +1,6 @@
 /**
  * @file Server-side Supabase client
- * @version 1.0.0
+ * @version 1.0.1
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -72,7 +72,7 @@ export function createServerSupabaseClient() {
  * @param request NextRequest object from middleware
  * @returns Supabase client configured for middleware
  */
-export function createServerSupabaseClient(request: NextRequest) {
+export function createMiddlewareSupabaseClient(request: NextRequest) {
   // Create an empty response to collect cookies
   let response = new Response(null)
   

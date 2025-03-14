@@ -1,6 +1,6 @@
 /**
  * @file Next.js Middleware
- * @version 1.2.0
+ * @version 1.2.1
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -19,7 +19,7 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
-import { createServerSupabaseClient } from './lib/supabase-server'
+import { createMiddlewareSupabaseClient } from './lib/supabase-server'
 import { CSRF_TOKEN_HEADER, CSRF_TOKEN_COOKIE } from './lib/csrf'
 
 // Check if in development environment
@@ -115,7 +115,7 @@ export async function middleware(request: NextRequest) {
   
   try {
     // Create server client to check authentication
-    const supabase = createServerSupabaseClient(request)
+    const supabase = createMiddlewareSupabaseClient(request)
     const {
       data: { session },
     } = await supabase.auth.getSession()
