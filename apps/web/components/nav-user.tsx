@@ -49,6 +49,14 @@ export function NavUser({
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
+  // Helper function to add auth parameter to dashboard URLs
+  const addAuthToUrl = (url: string) => {
+    if (url.startsWith('#') || !url.includes('/dashboard')) {
+      return url;
+    }
+    return url.includes('?') ? `${url}&auth=true` : `${url}?auth=true`;
+  };
+
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true)
@@ -126,7 +134,7 @@ export function NavUser({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings/billing?auth=true">
+                  <Link href={addAuthToUrl("/dashboard/settings/billing")}>
                     <Sparkles className="mr-2 h-4 w-4" />
                     Upgrade to Pro
                   </Link>
@@ -135,19 +143,19 @@ export function NavUser({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/profile?auth=true">
+                  <Link href={addAuthToUrl("/dashboard/profile")}>
                     <BadgeCheck className="mr-2 h-4 w-4" />
                     Account
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings/billing?auth=true">
+                  <Link href={addAuthToUrl("/dashboard/settings/billing")}>
                     <CreditCard className="mr-2 h-4 w-4" />
                     Billing
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings/notifications?auth=true">
+                  <Link href={addAuthToUrl("/dashboard/settings/notifications")}>
                     <Bell className="mr-2 h-4 w-4" />
                     Notifications
                   </Link>
