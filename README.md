@@ -215,4 +215,34 @@ This project was created by:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Code Organization and Architecture
+
+The codebase follows a modular architecture with clear separation of concerns:
+
+### Authentication System
+
+The authentication system is centralized in the following components:
+
+- **AuthService**: Handles all authentication-related functionality (login, logout, signup, etc.)
+- **Permission Utilities**: Provides functions for checking user permissions
+- **Error Handling**: Centralized error handling for consistent error responses
+
+For detailed documentation on the authentication system, see the [Authentication Documentation](docs/authentication/README.md).
+
+### Dependency Injection
+
+The application uses a simple dependency injection container to improve testability and reduce coupling:
+
+- **DIContainer**: A container for registering and retrieving services
+- **Service Interfaces**: Interfaces for all services to enable mocking
+- **React Integration**: React context provider and hooks for accessing services
+
+### Error Handling
+
+The application implements a consistent error handling strategy:
+
+- **Custom Error Classes**: Specialized error classes for different error types
+- **Error Utilities**: Functions for formatting and handling errors
+- **API Error Responses**: Consistent error response format for all API endpoints 
