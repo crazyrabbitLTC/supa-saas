@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuthService } from '@/lib/auth'
-import { toast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -29,17 +29,10 @@ export default function SettingsPage() {
     try {
       // In a real application, you would update the user's profile here
       await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-      toast({
-        title: 'Profile updated',
-        description: 'Your profile has been updated successfully.',
-      })
+      toast.success('Your profile has been updated successfully.')
     } catch (error) {
       console.error('Error updating profile:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to update profile. Please try again.',
-        variant: 'destructive',
-      })
+      toast.error('Failed to update profile. Please try again.')
     } finally {
       setIsUpdating(false)
     }
@@ -52,17 +45,10 @@ export default function SettingsPage() {
     try {
       // In a real application, you would change the password here
       await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-      toast({
-        title: 'Password changed',
-        description: 'Your password has been changed successfully.',
-      })
+      toast.success('Your password has been changed successfully.')
     } catch (error) {
       console.error('Error changing password:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to change password. Please try again.',
-        variant: 'destructive',
-      })
+      toast.error('Failed to change password. Please try again.')
     } finally {
       setIsUpdating(false)
     }
