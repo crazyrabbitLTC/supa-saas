@@ -2,7 +2,7 @@
 
 /**
  * @file CSRF protection utilities
- * @version 1.3.0
+ * @version 1.3.1
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -267,7 +267,4 @@ export const clearCSRFToken = (): void => {
   } catch (error) {
     console.error('Error clearing CSRF token:', error)
   }
-}
-
-// Export constants for use in middleware and API routes
-export { CSRF_TOKEN_COOKIE, CSRF_TOKEN_HEADER } 
+} 
