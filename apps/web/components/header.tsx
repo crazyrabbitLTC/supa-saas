@@ -25,6 +25,15 @@ export function Header() {
     router.push('/')
   }, [router])
 
+  const handleDashboardClick = useCallback((e: React.MouseEvent) => {
+    if (!isAuthenticated) {
+      e.preventDefault()
+      router.push('/login')
+    } else {
+      router.push('/dashboard')
+    }
+  }, [isAuthenticated, router])
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-200 bg-white dark:bg-gray-950 dark:border-gray-800">
       <div className="container mx-auto flex h-16 items-center">
@@ -51,14 +60,13 @@ export function Header() {
             >
               Documentation
             </Link>
-            {isAuthenticated && (
-              <Link
-                href="/dashboard"
-                className="flex items-center text-sm font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
-              >
-                Dashboard
-              </Link>
-            )}
+            <Link
+              href="/dashboard"
+              onClick={handleDashboardClick}
+              className="flex items-center text-sm font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+            >
+              Dashboard
+            </Link>
           </nav>
         </div>
         <div className="ml-auto flex items-center space-x-4">
@@ -69,8 +77,13 @@ export function Header() {
               <div className="h-8 w-8 rounded-full bg-neutral-200 animate-pulse"></div>
             ) : isAuthenticated ? (
               <>
-                <Button asChild variant="default" size="sm" className="mr-2">
-                  <Link href="/dashboard">Go to Dashboard</Link>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="mr-2"
+                  onClick={() => router.push('/dashboard')}
+                >
+                  Go to Dashboard
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -89,11 +102,11 @@ export function Header() {
                       </div>
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard">Dashboard</Link>
+                    <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                      Dashboard
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/settings">Settings</Link>
+                    <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
+                      Settings
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
