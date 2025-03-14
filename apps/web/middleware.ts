@@ -1,6 +1,58 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { CSRF_TOKEN_COOKIE, CSRF_TOKEN_HEADER } from './lib/csrf'
+
+// List of operations that require CSRF validation
+const CSRF_PROTECTED_METHODS = ['POST', 'PUT', 'DELETE', 'PATCH']
+const CSRF_PROTECTED_ROUTES = [
+  '/api/auth/logout',
+  '/api/auth/password',
+  '/api/user',
+  '/api/profile',
+  '/api/billing',
+  '/api/settings',
+]
+
+// Helper to determine if a request requires CSRF protection
+const requiresCSRFProtection = (request: NextRequest): boolean => {
+  // Only validate CSRF for state-changing methods
+  if (!CSRF_PROTECTED_METHODS.includes(request.method)) {
+    return false
+  }
+  
+  // Check if the path matches a protected route
+  const path = request.nextUrl.pathname
+  return CSRF_PROTECTED_ROUTES.some(route => path.startsWith(route))
+}
+
+// Helper to validate CSRF token in the request
+const validateCSRFRequest = (request: NextRequest): boolean => {
+  // Get the CSRF token from the request header
+  const csrfToken = request.headers.get(CSRF_TOKEN_HEADER)
+  if (!csrfToken) {
+    return false
+  }
+  
+  // Get the CSRF token from the cookie to compare
+  const cookieHeader = request.headers.get('cookie') || ''
+  const csrfCookieMatch = new RegExp(`${CSRF_TOKEN_COOKIE}=([^;]+)`).exec(cookieHeader)
+  
+  if (!csrfCookieMatch || csrfCookieMatch.length < 2) {
+    return false
+  }
+  
+  try {
+    const csrfCookie = JSON.parse(decodeURIComponent(csrfCookieMatch[1]))
+    
+    // Validate the token and expiration
+    const now = Math.floor(Date.now() / 1000)
+    return csrfCookie.token === csrfToken && csrfCookie.expires > now
+  } catch (error) {
+    console.error('CSRF validation error:', error)
+    return false
+  }
+}
 
 export async function middleware(request: NextRequest) {
   const startTime = new Date().getTime()
@@ -12,6 +64,32 @@ export async function middleware(request: NextRequest) {
   
   // Create response early so we can modify it
   const res = NextResponse.next()
+  
+  // Add security headers to all responses
+  res.headers.set('X-Content-Type-Options', 'nosniff')
+  res.headers.set('X-Frame-Options', 'DENY')
+  res.headers.set('X-XSS-Protection', '1; mode=block')
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  
+  // Check CSRF token for protected operations
+  if (requiresCSRFProtection(request)) {
+    if (!validateCSRFRequest(request)) {
+      console.error(`Middleware: [${new Date().toISOString()}] CSRF validation failed for ${request.method} ${request.nextUrl.pathname}`)
+      
+      // Return 403 Forbidden for invalid CSRF tokens
+      return new NextResponse(
+        JSON.stringify({ error: 'Invalid or missing CSRF token' }),
+        {
+          status: 403,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+    }
+    
+    console.log(`Middleware: [${new Date().toISOString()}] CSRF validation passed for ${request.method} ${request.nextUrl.pathname}`)
+  }
   
   // Extract the referer to understand where the request came from
   const referer = request.headers.get('referer') || 'unknown'

@@ -35,6 +35,7 @@ import { AuthService } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
+import { getCSRFToken } from "@/lib/csrf"
 
 export function NavUser({
   user,
@@ -64,11 +65,16 @@ export function NavUser({
       // Add a small delay to ensure the modal is shown
       await new Promise(resolve => setTimeout(resolve, 100))
       
+      // Generate a fresh CSRF token before logout to enhance security
+      getCSRFToken(true)
+      
+      // Call the logout method which now includes CSRF protection
       const { success, error } = await AuthService.logout()
       
       if (success) {
         toast.success("Logged out successfully")
-        router.push("/") // Redirect to homepage instead of login
+        // Use router.replace instead of push to prevent back navigation to authenticated pages
+        router.replace("/") 
       } else {
         console.error("Logout error:", error)
         toast.error(error || "Failed to log out")
