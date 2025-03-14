@@ -29,8 +29,8 @@ export function Header() {
     console.log("Logout initiated")
     await AuthService.logout()
     console.log("Logout completed, redirecting to home")
-    router.push('/')
-  }, [router])
+    window.location.href = '/'
+  }, [])
 
   const handleDashboardClick = useCallback((e: React.MouseEvent) => {
     console.log("Dashboard button clicked", { isAuthenticated, isLoading })
@@ -38,23 +38,23 @@ export function Header() {
     if (!isAuthenticated) {
       console.log("User not authenticated, preventing default and redirecting to login")
       e.preventDefault()
-      router.push('/login')
+      window.location.href = '/login'
     } else {
       console.log("User authenticated, navigating to dashboard")
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading])
 
   const navigateToDashboard = useCallback(() => {
     console.log("Go to Dashboard button clicked", { isAuthenticated, isLoading })
     if (isAuthenticated) {
-      console.log("Navigating to dashboard via programmatic navigation")
-      router.push('/dashboard')
+      console.log("Navigating to dashboard via direct navigation")
+      window.location.href = '/dashboard'
     } else {
       console.log("Not authenticated, redirecting to login")
-      router.push('/login')
+      window.location.href = '/login'
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading])
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-200 bg-white dark:bg-gray-950 dark:border-gray-800">
@@ -129,7 +129,7 @@ export function Header() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
                       console.log("Settings clicked, navigating");
-                      router.push('/dashboard/settings');
+                      window.location.href = '/dashboard/settings';
                     }}>
                       Settings
                     </DropdownMenuItem>

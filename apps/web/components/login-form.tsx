@@ -77,13 +77,12 @@ export function LoginForm({
       console.log("Login successful, attempting redirect to dashboard")
       toast.success('Logged in successfully!')
       
-      try {
-        console.log("Pushing to dashboard route")
-        router.push('/dashboard')
-        console.log("Router.push to dashboard completed")
-      } catch (navigationError) {
-        console.error("Navigation error", navigationError)
-      }
+      // Use a short delay to ensure the session is properly established
+      // before attempting navigation
+      setTimeout(() => {
+        console.log("Executing delayed redirect to dashboard")
+        window.location.href = '/dashboard'
+      }, 500)
     } catch (error) {
       console.error("Unexpected login error", error)
       toast.error('An unexpected error occurred')

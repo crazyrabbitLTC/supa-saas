@@ -4,6 +4,15 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 
 export async function middleware(request: NextRequest) {
   console.log("Middleware executing for path:", request.nextUrl.pathname)
+  
+  // Skip middleware for specific navigation targets
+  // This prevents interference with login redirections
+  const url = request.nextUrl
+  if (url.searchParams.has('authRedirect')) {
+    console.log("Skipping middleware for auth redirect")
+    return NextResponse.next()
+  }
+  
   const res = NextResponse.next()
   
   // Create a Supabase client configured to use cookies
