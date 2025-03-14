@@ -2,7 +2,7 @@
 
 /**
  * @file Supabase client for browser components
- * @version 1.3.0
+ * @version 1.4.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -78,22 +78,62 @@ const createIsomorphicStorage = () => {
       }
       memoryStorage.delete(key)
     },
+    getKey: (index: number): string | null => {
+      try {
+        if (isBrowser && window.localStorage) {
+          return window.localStorage.key(index)
+        }
+      } catch (error) {
+        console.warn('Error accessing localStorage keys:', error)
+      }
+      return Array.from(memoryStorage.keys())[index] || null
+    },
+    get length(): number {
+      try {
+        if (isBrowser && window.localStorage) {
+          return window.localStorage.length
+        }
+      } catch (error) {
+        console.warn('Error accessing localStorage length:', error)
+      }
+      return memoryStorage.size
+    },
+    // Add these methods to fully implement the Storage interface
+    key: function(index: number): string | null {
+      return this.getKey(index)
+    },
+    clear: function(): void {
+      try {
+        if (isBrowser && window.localStorage) {
+          window.localStorage.clear()
+          return
+        }
+      } catch (error) {
+        console.warn('Error clearing localStorage:', error)
+      }
+      memoryStorage.clear()
+    }
   }
 }
 
-// Client instance - will be initialized lazily
-let _browserSupabase: ReturnType<typeof createClient> | null = null
+// Wait for window to be defined before creating the client
+let _supabase: ReturnType<typeof createClient> | null = null
 
 /**
  * Creates a Supabase client for use in browser contexts with enhanced security
  * @returns Supabase client instance
  */
 export const createBrowserSupabaseClient = () => {
+  if (!isBrowser) {
+    // For SSR, return a dummy client that will be replaced on client-side
+    return createEmptyClient()
+  }
+  
   return createClient(supabaseUrl!, supabaseAnonKey!, {
     auth: {
-      autoRefreshToken: isBrowser,
+      autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: isBrowser,
+      detectSessionInUrl: true,
       storageKey: 'supabase-auth-token',
       // Enhanced security for cookies with isomorphic storage
       storage: createIsomorphicStorage(),
@@ -109,13 +149,35 @@ export const createBrowserSupabaseClient = () => {
 }
 
 /**
+ * Create an empty client for SSR that won't try to access localStorage
+ * This will be replaced on the client side
+ */
+const createEmptyClient = () => {
+  return createClient(supabaseUrl!, supabaseAnonKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+      storage: createIsomorphicStorage(),
+    },
+  })
+}
+
+/**
  * Gets a Supabase client for use in client components
  * This is a singleton instance that can be used throughout the client-side app
  * Lazy initialization prevents SSR issues
  */
-export const browserSupabase = (() => {
-  if (!_browserSupabase) {
-    _browserSupabase = createBrowserSupabaseClient()
+export const supabase = (() => {
+  // Only create the client when it's being accessed
+  if (isBrowser && !_supabase) {
+    _supabase = createBrowserSupabaseClient()
+  } else if (!_supabase) {
+    // For SSR, create a non-localStorage dependent client
+    _supabase = createEmptyClient()
   }
-  return _browserSupabase
-})() 
+  return _supabase
+})()
+
+// Export for backwards compatibility
+export const browserSupabase = supabase 

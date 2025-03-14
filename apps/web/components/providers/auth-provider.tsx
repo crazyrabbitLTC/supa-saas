@@ -7,78 +7,127 @@
  * Provides authentication state management for the application.
  */
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { AuthService } from '@/lib/auth'
-import { Session, User } from '@supabase/supabase-js'
-import { browserSupabase } from '@/lib/supabase-browser'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { User, Session } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase-browser'
 
-type AuthContextType = {
+/**
+ * Authentication context type
+ */
+export interface AuthContextType {
   session: Session | null
   user: User | null
   isLoading: boolean
   isAuthenticated: boolean
+  error: string | null
 }
 
-const AuthContext = createContext<AuthContextType>({
+/**
+ * Context default value
+ */
+const defaultContextValue: AuthContextType = {
   session: null,
   user: null,
   isLoading: true,
   isAuthenticated: false,
-})
-
-export const useAuth = () => useContext(AuthContext)
+  error: null,
+}
 
 /**
- * Provider component for authentication state
+ * Create context for authentication
  */
-export function AuthProvider({ children }: { children: ReactNode }) {
+const AuthContext = createContext<AuthContextType>(defaultContextValue)
+
+/**
+ * Provider for authentication state
+ */
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
+  // Handle auth state changes
   useEffect(() => {
-    // Fetch the current session when the component mounts
-    const fetchSession = async () => {
-      console.log("AuthProvider: Fetching initial session")
+    let mounted = true
+    
+    async function getSession() {
       try {
-        const currentSession = await AuthService.getSession()
-        console.log("AuthProvider: Initial session result", { 
-          hasSession: !!currentSession,
-          user: currentSession?.user?.email
-        })
-        setSession(currentSession)
-        setUser(currentSession?.user || null)
+        setIsLoading(true)
+        
+        // Get current session
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error('Error fetching session:', sessionError.message)
+          if (mounted) {
+            setError(sessionError.message)
+          }
+          return
+        }
+        
+        // Update state with session data if component is still mounted
+        if (mounted) {
+          setSession(currentSession)
+          setUser(currentSession?.user ?? null)
+          setError(null)
+        }
       } catch (error) {
-        console.error('Error fetching session:', error)
+        console.error('Unexpected error fetching session:', error)
+        if (mounted) {
+          setError(error instanceof Error ? error.message : 'Unknown error')
+        }
       } finally {
-        setIsLoading(false)
+        if (mounted) {
+          setIsLoading(false)
+        }
       }
     }
-
-    // Listen for authentication state changes
-    const { data: { subscription } } = browserSupabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        console.log("AuthProvider: Auth state changed", { event, user: currentSession?.user?.email })
+    
+    // Initial session fetch
+    getSession()
+    
+    // Subscribe to auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log(`Auth state changed: ${event}`, {
+          sessionExists: !!session,
+          userEmail: session?.user?.email
+        })
         
-        setSession(currentSession)
-        setUser(currentSession?.user || null)
-        setIsLoading(false)
+        if (mounted) {
+          setSession(session)
+          setUser(session?.user ?? null)
+          setIsLoading(false)
+        }
       }
     )
-
-    fetchSession()
-
+    
+    // Cleanup on unmount
     return () => {
-      subscription.unsubscribe()
+      mounted = false
+      authListener?.subscription.unsubscribe()
     }
   }, [])
-
+  
   const value = {
     session,
     user,
     isLoading,
     isAuthenticated: !!session,
+    error,
   }
-
+  
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+/**
+ * Hook to access authentication context
+ */
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 } 
