@@ -17,10 +17,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { RateLimiter } from 'next-rate-limit'
 
 // Check if in development environment
 const isDev = process.env.NODE_ENV === 'development'
+
+// In-memory store for rate limiting
+// Note: This will be reset on server restart
+// For production, use a persistent store like Redis
+const ipRequestStore: Record<string, { count: number; resetTime: number }> = {}
 
 /**
  * Rate limit configuration for different endpoint types
@@ -40,7 +44,7 @@ export enum RateLimitType {
 export interface RateLimitConfig {
   // Maximum number of requests in the time window
   max: number
-  // Time window in seconds
+  // Time window in milliseconds
   windowMs: number
   // Message to return when rate limit is exceeded
   message: string
@@ -91,42 +95,61 @@ export function getRateLimitConfig(type: RateLimitType): RateLimitConfig {
 }
 
 /**
- * Create a rate limiter instance for a specific endpoint type
+ * Check if a request is rate limited
+ * @param ip - Client IP address
  * @param type - Rate limit type
- * @returns Rate limiter instance
+ * @returns Boolean indicating if request is rate limited
  */
-export function createRateLimiter(type: RateLimitType): RateLimiter {
+function isRateLimited(ip: string, type: RateLimitType): boolean {
   const config = getRateLimitConfig(type)
+  const now = Date.now()
   
-  return new RateLimiter({
-    interval: config.windowMs,
-    limit: config.max,
-  })
+  // Get or initialize request data for this IP
+  if (!ipRequestStore[ip]) {
+    ipRequestStore[ip] = {
+      count: 0,
+      resetTime: now + config.windowMs,
+    }
+  }
+  
+  const requestData = ipRequestStore[ip]
+  
+  // Reset count if window has passed
+  if (now > requestData.resetTime) {
+    requestData.count = 0
+    requestData.resetTime = now + config.windowMs
+  }
+  
+  // Increment request count
+  requestData.count++
+  
+  // Check if rate limit exceeded
+  return requestData.count > config.max
 }
 
 /**
- * Rate limiting middleware for Next.js API routes
+ * Apply rate limiting to a Next.js API route handler
+ * @param handler - API route handler
  * @param type - Rate limit type
- * @returns Middleware function
+ * @returns Rate-limited handler
  */
-export function withRateLimit(type: RateLimitType = RateLimitType.API) {
-  const limiter = createRateLimiter(type)
-  const config = getRateLimitConfig(type)
-  
-  return async function rateLimit(request: NextRequest) {
+export function applyRateLimit(
+  handler: (request: NextRequest) => Promise<NextResponse> | NextResponse,
+  type: RateLimitType = RateLimitType.API
+) {
+  return async function rateLimitedHandler(request: NextRequest) {
     // Skip rate limiting in development if needed
     if (isDev && process.env.DISABLE_RATE_LIMIT === 'true') {
-      return null
+      return handler(request)
     }
     
     // Get client IP
     const ip = request.ip || 'unknown'
+    const config = getRateLimitConfig(type)
     
     try {
       // Check rate limit
-      const { success } = await limiter.check(ip)
-      
-      if (!success) {
+      if (isRateLimited(ip, type)) {
         // Rate limit exceeded
         return NextResponse.json(
           {
@@ -141,38 +164,12 @@ export function withRateLimit(type: RateLimitType = RateLimitType.API) {
         )
       }
       
-      // Rate limit not exceeded
-      return null
+      // Rate limit not exceeded, proceed with handler
+      return handler(request)
     } catch (error) {
       console.error('Rate limiting error:', error)
       // In case of error, allow the request to proceed
-      return null
+      return handler(request)
     }
-  }
-}
-
-/**
- * Apply rate limiting to a Next.js API route handler
- * @param handler - API route handler
- * @param type - Rate limit type
- * @returns Rate-limited handler
- */
-export function applyRateLimit(
-  handler: (request: NextRequest) => Promise<NextResponse> | NextResponse,
-  type: RateLimitType = RateLimitType.API
-) {
-  const rateLimitMiddleware = withRateLimit(type)
-  
-  return async function rateLimitedHandler(request: NextRequest) {
-    // Apply rate limiting
-    const rateLimitResult = await rateLimitMiddleware(request)
-    
-    // If rate limit is exceeded, return the error response
-    if (rateLimitResult) {
-      return rateLimitResult
-    }
-    
-    // Otherwise, proceed with the handler
-    return handler(request)
   }
 } 

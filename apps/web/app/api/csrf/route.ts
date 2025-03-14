@@ -18,8 +18,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import { cookies } from 'next/headers'
-import { CookieType, setApiCookie } from '../../lib/cookie-manager'
-import { applyRateLimit, RateLimitType } from '../../lib/rate-limit'
+import { CookieType, setApiCookie } from '../../../lib/cookie-manager'
+import { applyRateLimit, RateLimitType } from '../../../lib/rate-limit'
 
 // Constants
 export const CSRF_TOKEN_COOKIE = 'csrfToken'

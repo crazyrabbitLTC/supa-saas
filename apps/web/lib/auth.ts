@@ -25,7 +25,7 @@
  */
 
 import { supabase } from './supabase-browser'
-import { generateCSRFToken, storeCSRFToken, validateCSRFToken } from './csrf'
+import { getCSRFToken, validateCSRFToken, clearCSRFToken } from './csrf'
 
 // Check if running in browser environment
 const isBrowser = typeof window !== 'undefined'
@@ -133,8 +133,7 @@ export const AuthService = {
   async signUp({ email, password, firstName, lastName }: SignupCredentials): Promise<SignupResponse> {
     try {
       // Add CSRF protection
-      const csrfToken = generateCSRFToken()
-      storeCSRFToken(csrfToken)
+      const csrfToken = await getCSRFToken(true) // Force new token
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -184,8 +183,7 @@ export const AuthService = {
       }
       
       // Add CSRF protection
-      const csrfToken = generateCSRFToken()
-      storeCSRFToken(csrfToken)
+      const csrfToken = await getCSRFToken(true) // Force new token
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -229,6 +227,9 @@ export const AuthService = {
    */
   async logout(): Promise<{ success: boolean; error?: string }> {
     try {
+      // Clear CSRF token on logout
+      clearCSRFToken()
+      
       const { error } = await supabase.auth.signOut()
       
       if (error) {
