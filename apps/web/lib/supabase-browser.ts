@@ -2,20 +2,22 @@
 
 /**
  * @file Supabase client for browser components
- * @version 1.1.0
+ * @version 1.2.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
- * @lastModified 2023-06-14
+ * @lastModified 2023-06-15
  * 
  * This file provides utilities for initializing and using Supabase
  * in client components with enhanced security features.
  * 
  * IMPORTANT:
  * - Uses secure cookie settings for authentication
- * - Configures storage to use secure cookies
+ * - Configures storage to work in both client and server environments
+ * - Provides isomorphic storage implementation for SSR compatibility
  * 
  * Functionality:
  * - Creates a secure Supabase client for browser use
  * - Provides a singleton instance for application-wide use
+ * - Safe to use in both client and server contexts
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -31,6 +33,41 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
+// Check if we're running in a browser environment
+const isBrowser = typeof window !== 'undefined'
+
+/**
+ * Isomorphic storage implementation that works in both client and server environments
+ * Falls back to memory storage when localStorage is not available (server-side)
+ */
+const createIsomorphicStorage = () => {
+  // In-memory fallback for server-side
+  const memoryStorage = new Map<string, string>()
+
+  return {
+    getItem: (key: string) => {
+      if (isBrowser) {
+        return localStorage.getItem(key)
+      }
+      return memoryStorage.get(key) || null
+    },
+    setItem: (key: string, value: string) => {
+      if (isBrowser) {
+        localStorage.setItem(key, value)
+      } else {
+        memoryStorage.set(key, value)
+      }
+    },
+    removeItem: (key: string) => {
+      if (isBrowser) {
+        localStorage.removeItem(key)
+      } else {
+        memoryStorage.delete(key)
+      }
+    },
+  }
+}
+
 /**
  * Creates a Supabase client for use in browser contexts with enhanced security
  * @returns Supabase client instance
@@ -42,19 +79,8 @@ export const createBrowserSupabaseClient = () => {
       persistSession: true,
       detectSessionInUrl: true,
       storageKey: 'supabase-auth-token',
-      // Enhanced security for cookies
-      storage: {
-        getItem: (key) => {
-          const item = localStorage.getItem(key)
-          return item || null
-        },
-        setItem: (key, value) => {
-          localStorage.setItem(key, value)
-        },
-        removeItem: (key) => {
-          localStorage.removeItem(key)
-        },
-      },
+      // Enhanced security for cookies with isomorphic storage
+      storage: createIsomorphicStorage(),
       cookieOptions: {
         // Enforce secure settings for auth cookies
         secure: process.env.NODE_ENV === 'production',

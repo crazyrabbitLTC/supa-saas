@@ -2,24 +2,30 @@
 
 /**
  * @file Secure fetch utility
- * @version 1.0.0
+ * @version 1.1.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
- * @lastModified 2023-06-14
+ * @lastModified 2023-06-15
  * 
  * Provides a secure fetch utility that automatically adds CSRF tokens
  * to API requests to protect against CSRF attacks.
+ * Enhanced to work in both client and server environments.
  * 
  * IMPORTANT:
  * - Use this instead of native fetch for all API calls that modify data
  * - Ensures CSRF token is included in the request headers
+ * - Safe to use in both client and server contexts
  * 
  * Functionality:
  * - Automatic CSRF token inclusion
  * - Type-safe response handling
  * - Error handling with standardized format
+ * - Isomorphic implementation (works in SSR)
  */
 
 import { addCSRFToken } from './csrf'
+
+// Check if we're running in a browser environment
+const isBrowser = typeof window !== 'undefined'
 
 // Type for standardized API error responses
 export interface ApiError {
@@ -48,8 +54,8 @@ export async function secureFetch<T = any>(
 ): Promise<T> {
   const { skipCSRF = false, ...fetchOptions } = options
   
-  // Only add CSRF token if not skipped
-  const finalOptions = skipCSRF
+  // Only add CSRF token if not skipped and in browser context
+  const finalOptions = (skipCSRF || !isBrowser) 
     ? fetchOptions
     : addCSRFToken(fetchOptions)
   
@@ -136,7 +142,8 @@ export function securePost<T = any>(
     },
     body: data ? JSON.stringify(data) : undefined,
     ...options,
-    skipCSRF: false, // Always protect POST requests
+    // Skip CSRF token in server context
+    skipCSRF: !isBrowser || options.skipCSRF === true,
   })
 }
 
@@ -160,7 +167,8 @@ export function securePut<T = any>(
     },
     body: data ? JSON.stringify(data) : undefined,
     ...options,
-    skipCSRF: false, // Always protect PUT requests
+    // Skip CSRF token in server context
+    skipCSRF: !isBrowser || options.skipCSRF === true,
   })
 }
 
@@ -177,7 +185,8 @@ export function secureDelete<T = any>(
   return secureFetch<T>(url, {
     method: 'DELETE',
     ...options,
-    skipCSRF: false, // Always protect DELETE requests
+    // Skip CSRF token in server context
+    skipCSRF: !isBrowser || options.skipCSRF === true,
   })
 }
 
@@ -201,6 +210,7 @@ export function securePatch<T = any>(
     },
     body: data ? JSON.stringify(data) : undefined,
     ...options,
-    skipCSRF: false, // Always protect PATCH requests
+    // Skip CSRF token in server context
+    skipCSRF: !isBrowser || options.skipCSRF === true,
   })
 } 

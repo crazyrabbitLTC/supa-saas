@@ -2,28 +2,34 @@
 
 /**
  * @file Authentication service
- * @version 1.1.0
+ * @version 1.2.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
- * @lastModified 2023-06-14
+ * @lastModified 2023-06-15
  * 
  * Provides functions for handling authentication operations like signup, login, logout,
  * and session management using Supabase Auth with added security features.
+ * Enhanced to work in both client and server environments.
  * 
  * IMPORTANT:
  * - Includes CSRF protection for auth operations
  * - Implements secure cookie handling
  * - Adds basic rate limiting tracking
+ * - Safe to use in both client and server contexts
  * 
  * Functionality:
  * - User signup with metadata
  * - User login with security measures
  * - Secure logout process
  * - Session management
+ * - Isomorphic implementation (works in SSR)
  */
 
 import { createBrowserSupabaseClient, browserSupabase } from './supabase-browser'
 import { getCSRFToken, clearCSRFToken } from './csrf'
 import Cookies from 'js-cookie'
+
+// Check if we're running in a browser environment
+const isBrowser = typeof window !== 'undefined'
 
 // Types for authentication operations
 type SignUpCredentials = {
@@ -58,12 +64,62 @@ interface RateLimitData {
   resetAt: number // Unix timestamp
 }
 
+// Server-side storage for rate limiting
+const serverRateLimitStorage = new Map<string, string>()
+
+/**
+ * Gets a cookie value in an isomorphic way (works in both browser and server)
+ * @param name - Cookie name
+ * @returns Cookie value or null if not found
+ */
+const getCookie = (name: string): string | null => {
+  if (isBrowser) {
+    return Cookies.get(name) || null
+  }
+  return serverRateLimitStorage.get(name) || null
+}
+
+/**
+ * Sets a cookie value in an isomorphic way
+ * @param name - Cookie name
+ * @param value - Cookie value
+ * @param options - Cookie options
+ */
+const setCookie = (
+  name: string, 
+  value: string, 
+  options?: Cookies.CookieAttributes
+): void => {
+  if (isBrowser) {
+    Cookies.set(name, value, options)
+  } else {
+    serverRateLimitStorage.set(name, value)
+  }
+}
+
+/**
+ * Removes a cookie in an isomorphic way
+ * @param name - Cookie name
+ */
+const removeCookie = (name: string): void => {
+  if (isBrowser) {
+    Cookies.remove(name)
+  } else {
+    serverRateLimitStorage.delete(name)
+  }
+}
+
 /**
  * Checks if the current client is rate limited for auth attempts
  * @returns Boolean indicating if rate limited, and seconds until reset if limited
  */
 const isRateLimited = (): { limited: boolean; resetIn?: number } => {
-  const rateLimitJson = Cookies.get(RATE_LIMIT_COOKIE)
+  // Skip rate limiting on the server
+  if (!isBrowser) {
+    return { limited: false }
+  }
+  
+  const rateLimitJson = getCookie(RATE_LIMIT_COOKIE)
   
   if (!rateLimitJson) {
     return { limited: false }
@@ -75,7 +131,7 @@ const isRateLimited = (): { limited: boolean; resetIn?: number } => {
     
     // If the rate limit window has expired, reset the counter
     if (rateLimit.resetAt <= now) {
-      Cookies.remove(RATE_LIMIT_COOKIE)
+      removeCookie(RATE_LIMIT_COOKIE)
       return { limited: false }
     }
     
@@ -98,7 +154,12 @@ const isRateLimited = (): { limited: boolean; resetIn?: number } => {
  * Records an authentication attempt for rate limiting
  */
 const recordAuthAttempt = (): void => {
-  const rateLimitJson = Cookies.get(RATE_LIMIT_COOKIE)
+  // Skip rate limiting on the server
+  if (!isBrowser) {
+    return
+  }
+  
+  const rateLimitJson = getCookie(RATE_LIMIT_COOKIE)
   const now = Math.floor(Date.now() / 1000)
   
   let rateLimit: RateLimitData
@@ -133,7 +194,7 @@ const recordAuthAttempt = (): void => {
   }
   
   // Store updated rate limit data
-  Cookies.set(RATE_LIMIT_COOKIE, JSON.stringify(rateLimit), {
+  setCookie(RATE_LIMIT_COOKIE, JSON.stringify(rateLimit), {
     expires: new Date(rateLimit.resetAt * 1000), // Convert to milliseconds
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
@@ -145,7 +206,12 @@ const recordAuthAttempt = (): void => {
  * Reset the rate limit counter (used after successful auth)
  */
 const resetRateLimit = (): void => {
-  Cookies.remove(RATE_LIMIT_COOKIE)
+  // Skip rate limiting on the server
+  if (!isBrowser) {
+    return
+  }
+  
+  removeCookie(RATE_LIMIT_COOKIE)
 }
 
 /**
@@ -165,20 +231,23 @@ export const AuthService = {
     password,
   }: SignUpCredentials): Promise<SignUpResponse> {
     try {
-      // Rate limiting check
-      const rateLimited = isRateLimited()
-      if (rateLimited.limited) {
-        return {
-          success: false,
-          error: `Too many authentication attempts. Please try again in ${Math.ceil(rateLimited.resetIn! / 60)} minutes.`,
+      // Skip security checks on server-side
+      if (isBrowser) {
+        // Rate limiting check
+        const rateLimited = isRateLimited()
+        if (rateLimited.limited) {
+          return {
+            success: false,
+            error: `Too many authentication attempts. Please try again in ${Math.ceil(rateLimited.resetIn! / 60)} minutes.`,
+          }
         }
+        
+        // Record this attempt
+        recordAuthAttempt()
+        
+        // Generate a CSRF token for this operation
+        getCSRFToken(true) // Force a new token
       }
-      
-      // Record this attempt
-      recordAuthAttempt()
-      
-      // Generate a CSRF token for this operation
-      getCSRFToken(true) // Force a new token
       
       const supabase = browserSupabase
       
@@ -212,8 +281,10 @@ export const AuthService = {
         }
       }
 
-      // Reset rate limiting on success
-      resetRateLimit()
+      // Reset rate limiting on success (client-side only)
+      if (isBrowser) {
+        resetRateLimit()
+      }
       
       return { success: true }
     } catch (error) {
@@ -236,20 +307,23 @@ export const AuthService = {
   }: LoginCredentials): Promise<LoginResponse> {
     console.log(`AuthService.login: [${new Date().toISOString()}] Attempting login`, { email })
     try {
-      // Rate limiting check
-      const rateLimited = isRateLimited()
-      if (rateLimited.limited) {
-        return {
-          success: false,
-          error: `Too many authentication attempts. Please try again in ${Math.ceil(rateLimited.resetIn! / 60)} minutes.`,
+      // Skip security checks on server-side
+      if (isBrowser) {
+        // Rate limiting check
+        const rateLimited = isRateLimited()
+        if (rateLimited.limited) {
+          return {
+            success: false,
+            error: `Too many authentication attempts. Please try again in ${Math.ceil(rateLimited.resetIn! / 60)} minutes.`,
+          }
         }
+        
+        // Record this attempt
+        recordAuthAttempt()
+        
+        // Generate a CSRF token for this operation
+        getCSRFToken(true) // Force a new token
       }
-      
-      // Record this attempt
-      recordAuthAttempt()
-      
-      // Generate a CSRF token for this operation
-      getCSRFToken(true) // Force a new token
       
       const supabase = browserSupabase
       
@@ -278,12 +352,16 @@ export const AuthService = {
         }
       }
 
-      // Reset rate limiting on success
-      resetRateLimit()
+      // Reset rate limiting on success (client-side only)
+      if (isBrowser) {
+        resetRateLimit()
+      }
       
-      // Add a small delay to ensure cookies are set
-      console.log(`AuthService.login: [${new Date().toISOString()}] Login successful, waiting for session to be established...`)
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Add a small delay to ensure cookies are set (client-side only)
+      if (isBrowser) {
+        console.log(`AuthService.login: [${new Date().toISOString()}] Login successful, waiting for session to be established...`)
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
       
       // Verify session immediately after login
       const sessionCheck = await this.getSession()
@@ -314,8 +392,10 @@ export const AuthService = {
    */
   async logout(): Promise<{ success: boolean; error?: string }> {
     try {
-      // Get a CSRF token to protect this operation
-      getCSRFToken(true) // Force a new token
+      // Get a CSRF token to protect this operation (client-side only)
+      if (isBrowser) {
+        getCSRFToken(true) // Force a new token
+      }
       
       const supabase = browserSupabase
       
@@ -328,9 +408,11 @@ export const AuthService = {
         }
       }
 
-      // Clear any security tokens after logout
-      clearCSRFToken()
-      resetRateLimit()
+      // Clear any security tokens after logout (client-side only)
+      if (isBrowser) {
+        clearCSRFToken()
+        resetRateLimit()
+      }
       
       return { success: true }
     } catch (error) {
