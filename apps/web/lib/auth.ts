@@ -99,14 +99,18 @@ export const AuthService = {
     email,
     password,
   }: LoginCredentials): Promise<LoginResponse> {
-    console.log("AuthService.login: Attempting login", { email })
+    console.log(`AuthService.login: [${new Date().toISOString()}] Attempting login`, { email })
     try {
       const supabase = browserSupabase
       
+      const startTime = new Date().getTime()
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
+      const endTime = new Date().getTime()
+      
+      console.log(`AuthService.login: [${new Date().toISOString()}] Supabase auth call completed in ${endTime - startTime}ms`)
 
       if (error) {
         console.error("AuthService.login: Login error from Supabase", { error: error.message })
@@ -124,7 +128,19 @@ export const AuthService = {
         }
       }
 
-      console.log("AuthService.login: Login successful", { 
+      // Add a small delay to ensure cookies are set
+      console.log(`AuthService.login: [${new Date().toISOString()}] Login successful, waiting for session to be established...`)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Verify session immediately after login
+      const sessionCheck = await this.getSession()
+      console.log(`AuthService.login: [${new Date().toISOString()}] Session check after login:`, { 
+        hasSession: !!sessionCheck,
+        sessionUser: sessionCheck?.user?.email,
+        sessionExpiry: sessionCheck?.expires_at
+      })
+
+      console.log(`AuthService.login: [${new Date().toISOString()}] Login successful`, { 
         userId: data.user.id,
         email: data.user.email,
         sessionExpires: data.session?.expires_at

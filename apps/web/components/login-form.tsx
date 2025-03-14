@@ -58,14 +58,14 @@ export function LoginForm({
   const onSubmit = async (data: LoginFormData) => {
     try {
       setIsLoading(true)
-      console.log("Login attempt started", { email: data.email })
+      console.log(`Login: [${new Date().toISOString()}] Login attempt started`, { email: data.email })
       
       const result = await AuthService.login({
         email: data.email,
         password: data.password,
       })
 
-      console.log("Login attempt result", { success: result.success })
+      console.log(`Login: [${new Date().toISOString()}] Login attempt result`, { success: result.success })
 
       if (!result.success) {
         console.error("Login failed", { error: result.error })
@@ -74,15 +74,25 @@ export function LoginForm({
       }
 
       // Show success message and redirect
-      console.log("Login successful, attempting redirect to dashboard")
+      console.log(`Login: [${new Date().toISOString()}] Login successful, preparing redirect to dashboard`)
       toast.success('Logged in successfully!')
       
-      // Use a short delay to ensure the session is properly established
-      // before attempting navigation
-      setTimeout(() => {
-        console.log("Executing delayed redirect to dashboard")
-        window.location.href = '/dashboard'
-      }, 500)
+      // Add a delay to ensure session is properly established before navigation
+      console.log(`Login: [${new Date().toISOString()}] Waiting before navigation attempt...`)
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      try {
+        console.log(`Login: [${new Date().toISOString()}] Pushing to dashboard route`)
+        router.push('/dashboard')
+        console.log(`Login: [${new Date().toISOString()}] Router.push to dashboard completed`)
+        
+        // Add a callback to check if navigation was successful
+        setTimeout(() => {
+          console.log(`Login: [${new Date().toISOString()}] Current pathname after navigation attempt:`, window.location.pathname)
+        }, 1000)
+      } catch (navigationError) {
+        console.error("Navigation error", navigationError)
+      }
     } catch (error) {
       console.error("Unexpected login error", error)
       toast.error('An unexpected error occurred')
