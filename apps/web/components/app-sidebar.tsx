@@ -204,6 +204,13 @@ export function AppSidebar() {
     return "User";
   };
 
+  // Create user data for NavUser component
+  const userData = {
+    name: getDisplayName(),
+    email: user?.email || "user@example.com",
+    avatar: user?.user_metadata?.avatar_url || "/placeholder-user.svg"
+  };
+
   return (
     <Sidebar className="border-r border-border flex flex-col h-full">
       <SidebarHeader>
@@ -284,38 +291,20 @@ export function AppSidebar() {
         </SidebarContent>
       </ScrollArea>
 
-      <SidebarFooter className="mt-auto border-t border-border">
-        <Link href="/dashboard/profile" className="block">
-          <div className="flex items-center gap-3 px-5 py-3 hover:bg-muted transition-colors cursor-pointer">
-            {isLoading ? (
-              <div className="size-9 rounded-full bg-muted animate-pulse"></div>
-            ) : (
-              <Avatar className="size-9">
-                <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder-user.svg"} alt="User" />
-                <AvatarFallback className="text-foreground bg-muted">
-                  {getUserInitials()}
-                </AvatarFallback>
-              </Avatar>
-            )}
-            <div className="grid gap-0.5">
-              {isLoading ? (
-                <>
-                  <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
-                  <div className="h-3 w-32 bg-muted rounded animate-pulse"></div>
-                </>
-              ) : (
-                <>
-                  <div className="text-sm font-medium text-foreground">
-                    {getDisplayName()}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate max-w-[120px]">
-                    {user?.email || "loading..."}
-                  </div>
-                </>
-              )}
+      <SidebarFooter className="mt-auto border-t border-border px-3 py-2">
+        {isLoading ? (
+          <div className="px-3 py-2">
+            <div className="flex items-center gap-3">
+              <div className="size-8 rounded-lg bg-muted animate-pulse"></div>
+              <div className="space-y-1">
+                <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
+                <div className="h-3 w-32 bg-muted rounded animate-pulse"></div>
+              </div>
             </div>
           </div>
-        </Link>
+        ) : (
+          <NavUser user={userData} />
+        )}
       </SidebarFooter>
     </Sidebar>
   )
