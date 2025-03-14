@@ -252,4 +252,3 @@ export const config = {
     '/:path((?!^/$).*)'
   ],
 } 
-} 
