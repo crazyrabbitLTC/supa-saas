@@ -2,7 +2,7 @@
 
 /**
  * @file Secure Fetch Utility
- * @version 1.2.0
+ * @version 1.3.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -53,7 +53,9 @@ export async function secureFetch<T = any>(
 ): Promise<ApiResponse<T>> {
   try {
     // Only add CSRF token in browser context
-    const secureOptions = isBrowser ? addCSRFToken(options) : options
+    const secureOptions = isBrowser 
+      ? await addCSRFToken(options) 
+      : options;
 
     // Set default headers
     secureOptions.headers = {

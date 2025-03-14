@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "drizzle-zod": "^0.7.0",
+    "next-rate-limit": "^0.0.3",
     "zod": "^3.22.4"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 /**
  * @file Next.js Middleware
- * @version 1.2.3
+ * @version 1.3.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -33,6 +33,7 @@ const publicRoutes = [
   '/reset-password',
   '/verify',
   '/api/health',
+  '/api/csrf', // Allow access to CSRF token endpoint
   '/_next',
   '/favicon.ico',
   // Add additional public routes as necessary
@@ -70,6 +71,39 @@ function requiresCSRFProtection(path: string): boolean {
 }
 
 /**
+ * Validates a CSRF token against the stored token
+ * @param token - The token to validate
+ * @param storedToken - The stored token to validate against
+ * @returns Boolean indicating if the token is valid
+ */
+function validateCSRFToken(token: string, storedToken: string): boolean {
+  if (!token || !storedToken) {
+    return false
+  }
+  
+  try {
+    const parsedToken = JSON.parse(storedToken)
+    
+    // Check if token matches and hasn't expired
+    const now = Math.floor(Date.now() / 1000)
+    const isValid = parsedToken.token === token && parsedToken.expires > now
+    
+    if (!isValid) {
+      console.warn('CSRF validation failed: Token expired or mismatch', {
+        tokenMatch: parsedToken.token === token,
+        expired: parsedToken.expires <= now,
+        expiresIn: parsedToken.expires - now
+      })
+    }
+    
+    return isValid
+  } catch (error) {
+    console.error('Error validating CSRF token:', error)
+    return false
+  }
+}
+
+/**
  * Middleware function executed on each request
  * @param request - NextRequest object
  * @returns NextResponse or undefined
@@ -102,18 +136,35 @@ export async function middleware(request: NextRequest) {
       console.warn(`[Middleware] CSRF token missing for protected route: ${pathname}`)
     } else if (!isDev && (!csrfToken || !storedToken)) {
       return NextResponse.json(
-        { error: 'CSRF token validation failed' },
+        { 
+          success: false,
+          error: {
+            message: 'CSRF token validation failed',
+            code: 'CSRF_MISSING',
+            status: 403
+          }
+        },
         { status: 403 }
       )
     }
     
     // In production, perform actual token validation
-    // This is simplified - in production you would validate the token properly
-    if (!isDev && csrfToken !== storedToken) {
-      return NextResponse.json(
-        { error: 'CSRF token validation failed' },
-        { status: 403 }
-      )
+    if (!isDev && csrfToken && storedToken) {
+      const isValid = validateCSRFToken(csrfToken, storedToken)
+      
+      if (!isValid) {
+        return NextResponse.json(
+          { 
+            success: false,
+            error: {
+              message: 'CSRF token validation failed',
+              code: 'CSRF_INVALID',
+              status: 403
+            }
+          },
+          { status: 403 }
+        )
+      }
     }
   }
   
@@ -169,7 +220,7 @@ export const config = {
     
     // Exclude public routes from matching
     // This pattern matches all routes EXCEPT those specifically listed after the negative lookahead
-    '/((?!login|signup|reset-password|verify|api/health|_next|favicon.ico).*)',
+    '/((?!login|signup|reset-password|verify|api/health|api/csrf|_next|favicon.ico).*)',
     
     // Explicitly exclude the homepage - this ensures the negative lookahead above won't match it
     '/:path((?!^/$).*)'
