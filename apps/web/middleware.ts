@@ -11,12 +11,25 @@ export async function middleware(request: NextRequest) {
   // Refresh session if expired - required for Server Components
   const { data: { session } } = await supabase.auth.getSession()
   
+  // Get the pathname from the URL
+  const path = request.nextUrl.pathname
+  
   // Check if the request is for a protected route (dashboard)
-  const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard')
+  const isProtectedRoute = path.startsWith('/dashboard')
+  
+  // Check if the request is for auth routes (login/signup)
+  const isAuthRoute = path === '/login' || path === '/signup'
   
   // If trying to access dashboard without auth, redirect to homepage
   if (isProtectedRoute && !session) {
     const redirectUrl = new URL('/', request.url)
+    return NextResponse.redirect(redirectUrl)
+  }
+  
+  // If user is already authenticated and trying to access auth routes,
+  // redirect them to the dashboard
+  if (isAuthRoute && session) {
+    const redirectUrl = new URL('/dashboard', request.url)
     return NextResponse.redirect(redirectUrl)
   }
   
