@@ -1,6 +1,6 @@
 /**
  * @file Next.js Middleware
- * @version 1.2.2
+ * @version 1.2.3
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -27,6 +27,7 @@ const isDev = process.env.NODE_ENV === 'development'
 
 // Public routes that don't require authentication
 const publicRoutes = [
+  '/',
   '/login',
   '/signup',
   '/reset-password',
@@ -167,6 +168,10 @@ export const config = {
     '/api/projects/:path*',
     
     // Exclude public routes from matching
+    // This pattern matches all routes EXCEPT those specifically listed after the negative lookahead
     '/((?!login|signup|reset-password|verify|api/health|_next|favicon.ico).*)',
+    
+    // Explicitly exclude the homepage - this ensures the negative lookahead above won't match it
+    '/:path((?!^/$).*)'
   ],
 } 
