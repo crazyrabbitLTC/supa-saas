@@ -2,7 +2,7 @@
 
 /**
  * @file CSRF protection utilities
- * @version 1.2.0
+ * @version 1.3.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -26,9 +26,9 @@ import { v4 as uuidv4 } from 'uuid'
 import Cookies from 'js-cookie'
 
 // Constants
-const CSRF_TOKEN_COOKIE = 'csrfToken'
-const CSRF_TOKEN_HEADER = 'X-CSRF-Token'
-const CSRF_TOKEN_EXPIRY = 60 * 60 * 24 // 24 hours in seconds
+export const CSRF_TOKEN_COOKIE = 'csrfToken'
+export const CSRF_TOKEN_HEADER = 'X-CSRF-Token'
+export const CSRF_TOKEN_EXPIRY = 60 * 60 * 24 // 24 hours in seconds
 
 // Check if we're running in a browser environment
 const isBrowser = typeof window !== 'undefined'
@@ -36,7 +36,7 @@ const isBrowser = typeof window !== 'undefined'
 /**
  * Interface for CSRF token with metadata
  */
-interface CSRFToken {
+export interface CSRFToken {
   token: string
   expires: number // Unix timestamp in seconds
 }
@@ -122,12 +122,14 @@ export const generateCSRFToken = (): CSRFToken => {
 export const validateCSRFToken = (token: string): boolean => {
   // Skip validation on server
   if (!isBrowser) {
+    console.log('CSRF validation skipped in server context')
     return true
   }
   
   const storedTokenJson = getCookie(CSRF_TOKEN_COOKIE)
   
   if (!storedTokenJson) {
+    console.warn('CSRF validation failed: No stored token found')
     return false
   }
   
@@ -136,7 +138,17 @@ export const validateCSRFToken = (token: string): boolean => {
     
     // Check if token matches and hasn't expired
     const now = Math.floor(Date.now() / 1000)
-    return storedToken.token === token && storedToken.expires > now
+    const isValid = storedToken.token === token && storedToken.expires > now
+    
+    if (!isValid) {
+      console.warn('CSRF validation failed: Token expired or mismatch', {
+        tokenMatch: storedToken.token === token,
+        expired: storedToken.expires <= now,
+        expiresIn: storedToken.expires - now
+      })
+    }
+    
+    return isValid
   } catch (error) {
     console.error('Error validating CSRF token:', error)
     return false
@@ -154,12 +166,18 @@ export const storeCSRFToken = (csrfToken: CSRFToken): void => {
     return
   }
   
-  setCookie(CSRF_TOKEN_COOKIE, JSON.stringify(csrfToken), {
-    expires: new Date(csrfToken.expires * 1000), // Convert to milliseconds
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    path: '/',
-  })
+  try {
+    setCookie(CSRF_TOKEN_COOKIE, JSON.stringify(csrfToken), {
+      expires: new Date(csrfToken.expires * 1000), // Convert to milliseconds
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    })
+  } catch (error) {
+    console.error('Error storing CSRF token:', error)
+    // Fallback to server storage
+    serverTokenStorage.set(CSRF_TOKEN_COOKIE, JSON.stringify(csrfToken))
+  }
 }
 
 /**
@@ -174,31 +192,38 @@ export const getCSRFToken = (forceNew = false): string => {
     return dummyToken.token
   }
   
-  const storedTokenJson = getCookie(CSRF_TOKEN_COOKIE)
-  
-  // Generate new token if none exists, is expired, or forced to be new
-  if (forceNew || !storedTokenJson) {
-    const newToken = generateCSRFToken()
-    storeCSRFToken(newToken)
-    return newToken.token
-  }
-  
   try {
-    const storedToken: CSRFToken = JSON.parse(storedTokenJson)
+    const storedTokenJson = getCookie(CSRF_TOKEN_COOKIE)
     
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000)
-    if (storedToken.expires <= now) {
+    // Generate new token if none exists, is expired, or forced to be new
+    if (forceNew || !storedTokenJson) {
       const newToken = generateCSRFToken()
       storeCSRFToken(newToken)
       return newToken.token
     }
     
-    return storedToken.token
+    try {
+      const storedToken: CSRFToken = JSON.parse(storedTokenJson)
+      
+      // Check if token is expired
+      const now = Math.floor(Date.now() / 1000)
+      if (storedToken.expires <= now) {
+        const newToken = generateCSRFToken()
+        storeCSRFToken(newToken)
+        return newToken.token
+      }
+      
+      return storedToken.token
+    } catch (error) {
+      console.error('Error retrieving CSRF token:', error)
+      const newToken = generateCSRFToken()
+      storeCSRFToken(newToken)
+      return newToken.token
+    }
   } catch (error) {
-    console.error('Error retrieving CSRF token:', error)
+    console.error('Error in getCSRFToken:', error)
+    // In case of any error, return a new token
     const newToken = generateCSRFToken()
-    storeCSRFToken(newToken)
     return newToken.token
   }
 }
@@ -237,7 +262,11 @@ export const addCSRFToken = (options: RequestInit = {}): RequestInit => {
  * Clears the stored CSRF token cookie
  */
 export const clearCSRFToken = (): void => {
-  removeCookie(CSRF_TOKEN_COOKIE)
+  try {
+    removeCookie(CSRF_TOKEN_COOKIE)
+  } catch (error) {
+    console.error('Error clearing CSRF token:', error)
+  }
 }
 
 // Export constants for use in middleware and API routes

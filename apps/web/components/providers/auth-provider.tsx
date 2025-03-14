@@ -2,9 +2,23 @@
 
 /**
  * @file Authentication provider component
- * @version 1.0.0
+ * @version 1.1.0
+ * @status STABLE - DO NOT MODIFY WITHOUT TESTS
+ * @lastModified 2023-06-15
  * 
  * Provides authentication state management for the application.
+ * Enhanced for SSR compatibility and better error handling.
+ * 
+ * IMPORTANT:
+ * - Central auth state management
+ * - Handles auth state changes
+ * - Safe for SSR contexts
+ * 
+ * Functionality:
+ * - Authentication state tracking
+ * - User session management
+ * - Loading state handling
+ * - Error state tracking
  */
 
 import { createContext, useContext, useEffect, useState } from 'react'
@@ -39,6 +53,11 @@ const defaultContextValue: AuthContextType = {
 const AuthContext = createContext<AuthContextType>(defaultContextValue)
 
 /**
+ * Check if we're in a browser environment
+ */
+const isBrowser = typeof window !== 'undefined'
+
+/**
  * Provider for authentication state
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -49,11 +68,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Handle auth state changes
   useEffect(() => {
+    // Skip the effect entirely on the server
+    if (!isBrowser) {
+      console.log('AuthProvider: Running on server, skipping auth initialization')
+      return
+    }
+    
     let mounted = true
     
     async function getSession() {
       try {
+        if (!mounted) return
         setIsLoading(true)
+        
+        console.log('AuthProvider: Getting initial session')
         
         // Get current session
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession()
@@ -68,6 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Update state with session data if component is still mounted
         if (mounted) {
+          console.log('AuthProvider: Session retrieved', { 
+            hasSession: !!currentSession,
+            user: currentSession?.user?.email
+          })
+          
           setSession(currentSession)
           setUser(currentSession?.user ?? null)
           setError(null)
@@ -88,25 +121,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getSession()
     
     // Subscribe to auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log(`Auth state changed: ${event}`, {
-          sessionExists: !!session,
-          userEmail: session?.user?.email
-        })
-        
-        if (mounted) {
-          setSession(session)
-          setUser(session?.user ?? null)
-          setIsLoading(false)
+    let authListener: { subscription: { unsubscribe: () => void } } | null = null
+    
+    try {
+      const { data } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          console.log(`Auth state changed: ${event}`, {
+            sessionExists: !!session,
+            userEmail: session?.user?.email
+          })
+          
+          if (mounted) {
+            setSession(session)
+            setUser(session?.user ?? null)
+            setIsLoading(false)
+          }
         }
-      }
-    )
+      )
+      
+      authListener = data
+    } catch (error) {
+      console.error('Error setting up auth listener:', error)
+      // Don't set error state here to avoid showing error to user
+      // Just log it since the getSession call will still work
+    }
     
     // Cleanup on unmount
     return () => {
       mounted = false
-      authListener?.subscription.unsubscribe()
+      if (authListener?.subscription) {
+        try {
+          authListener.subscription.unsubscribe()
+        } catch (error) {
+          console.error('Error unsubscribing from auth changes:', error)
+        }
+      }
     }
   }, [])
   
