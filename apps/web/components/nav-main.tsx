@@ -22,6 +22,14 @@ interface NavMainProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function NavMain({ items, className, ...props }: NavMainProps) {
+  // Function to add auth param to dashboard URLs
+  const addAuthToUrl = (url: string) => {
+    if (url.startsWith('#') || !url.includes('/dashboard')) {
+      return url;
+    }
+    return url.includes('?') ? `${url}&auth=true` : `${url}?auth=true`;
+  };
+
   return (
     <div className={cn("grid gap-1", className)} {...props}>
       <SidebarMenu>
@@ -42,7 +50,7 @@ export function NavMain({ items, className, ...props }: NavMainProps) {
                   <SidebarMenu className="ml-4 border-l border-neutral-200 pl-2">
                     {item.items.map((subItem, subIndex) => (
                       <SidebarMenuButton key={subIndex} asChild size="sm">
-                        <Link href={subItem.url}>
+                        <Link href={addAuthToUrl(subItem.url)}>
                           {subItem.icon && <span className="mr-2">{subItem.icon}</span>}
                           {subItem.title}
                         </Link>
@@ -56,7 +64,7 @@ export function NavMain({ items, className, ...props }: NavMainProps) {
 
           return (
             <SidebarMenuButton key={index} asChild>
-              <Link href={item.url}>
+              <Link href={addAuthToUrl(item.url)}>
                 {item.icon && <span className="mr-2">{item.icon}</span>}
                 {item.title}
               </Link>

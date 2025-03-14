@@ -19,6 +19,14 @@ export function NavSecondary({
     icon: LucideIcon
   }[]
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+  // Function to add auth param to dashboard URLs
+  const addAuthToUrl = (url: string) => {
+    if (url.startsWith('#') || !url.includes('/dashboard')) {
+      return url;
+    }
+    return url.includes('?') ? `${url}&auth=true` : `${url}?auth=true`;
+  };
+
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>
@@ -26,7 +34,7 @@ export function NavSecondary({
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild size="sm">
-                <a href={item.url}>
+                <a href={addAuthToUrl(item.url)}>
                   <item.icon />
                   <span>{item.title}</span>
                 </a>

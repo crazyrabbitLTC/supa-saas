@@ -241,7 +241,7 @@ export function AppSidebar() {
           <SidebarGroup className="px-3 py-1.5">
             <SidebarMenu>
               <SidebarMenuButton asChild className="bg-secondary/20 text-secondary-foreground hover:bg-secondary/30">
-                <Link href="/dashboard">
+                <Link href="/dashboard?auth=true">
                   <LayoutDashboard className="size-4" />
                   Dashboard
                 </Link>
@@ -255,7 +255,7 @@ export function AppSidebar() {
               items={[
                 {
                   title: "Profile",
-                  url: "/dashboard/profile",
+                  url: "/dashboard/profile?auth=true",
                   icon: <User className="size-4" />,
                 },
                 {
@@ -281,7 +281,7 @@ export function AppSidebar() {
             <SidebarGroupLabel>Settings</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuButton asChild>
-                <Link href="/dashboard/settings">
+                <Link href="/dashboard/settings?auth=true">
                   <Settings className="size-4" />
                   Settings
                 </Link>

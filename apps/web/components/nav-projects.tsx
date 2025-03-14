@@ -36,6 +36,14 @@ export function NavProjects({
 }) {
   const { isMobile } = useSidebar()
 
+  // Function to add auth param to dashboard URLs
+  const addAuthToUrl = (url: string) => {
+    if (url.startsWith('#') || !url.includes('/dashboard')) {
+      return url;
+    }
+    return url.includes('?') ? `${url}&auth=true` : `${url}?auth=true`;
+  };
+
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Projects</SidebarGroupLabel>
@@ -43,7 +51,7 @@ export function NavProjects({
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
-              <a href={item.url}>
+              <a href={addAuthToUrl(item.url)}>
                 <item.icon />
                 <span>{item.name}</span>
               </a>

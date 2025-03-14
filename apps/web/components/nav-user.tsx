@@ -126,7 +126,7 @@ export function NavUser({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings/billing">
+                  <Link href="/dashboard/settings/billing?auth=true">
                     <Sparkles className="mr-2 h-4 w-4" />
                     Upgrade to Pro
                   </Link>
@@ -135,19 +135,19 @@ export function NavUser({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/profile">
+                  <Link href="/dashboard/profile?auth=true">
                     <BadgeCheck className="mr-2 h-4 w-4" />
                     Account
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings/billing">
+                  <Link href="/dashboard/settings/billing?auth=true">
                     <CreditCard className="mr-2 h-4 w-4" />
                     Billing
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings/notifications">
+                  <Link href="/dashboard/settings/notifications?auth=true">
                     <Bell className="mr-2 h-4 w-4" />
                     Notifications
                   </Link>
