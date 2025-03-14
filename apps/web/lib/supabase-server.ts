@@ -1,6 +1,6 @@
 /**
  * @file Server-side Supabase client
- * @version 1.0.1
+ * @version 1.1.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -20,7 +20,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -34,82 +34,97 @@ if (!supabaseUrl || !supabaseKey) {
 
 /**
  * Create a Supabase client for server components
+ * Only use within React Server Components or Route Handlers where cookies() is available
  * @returns Supabase client for server context
  */
 export function createServerSupabaseClient() {
-  const cookieStore = cookies()
-  
-  return createServerClient(
-    supabaseUrl,
-    supabaseKey,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+  try {
+    const cookieStore = cookies()
+    
+    return createServerClient(
+      supabaseUrl,
+      supabaseKey,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            try {
+              cookieStore.set({ name, value, ...options })
+            } catch (error) {
+              // Handle cookies.set error in middleware
+              console.warn('Error setting cookie in server component:', error)
+            }
+          },
+          remove(name: string, options: any) {
+            try {
+              cookieStore.set({ name, value: '', ...options })
+            } catch (error) {
+              // Handle cookies.delete error in middleware
+              console.warn('Error removing cookie in server component:', error)
+            }
+          },
         },
-        set(name: string, value: string, options: any) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) {
-            // Handle cookies.set error in middleware
-          }
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (error) {
-            // Handle cookies.delete error in middleware
-          }
-        },
-      },
-    }
-  )
+      }
+    )
+  } catch (error) {
+    console.error('Error creating server Supabase client:', error)
+    throw error
+  }
 }
 
 /**
  * Create a Supabase client for middleware
  * This version works in Edge runtime
  * @param request NextRequest object from middleware
- * @returns Supabase client configured for middleware
+ * @param response Optional NextResponse object to use instead of creating a new one
+ * @returns Object with supabase client and response for cookie handling
  */
-export function createMiddlewareSupabaseClient(request: NextRequest) {
-  // Create an empty response to collect cookies
-  let response = new Response(null)
+export function createMiddlewareSupabaseClient(request: NextRequest, response?: NextResponse) {
+  // Create a response to collect cookies if not provided
+  const resObj = response || NextResponse.next()
   
-  return createServerClient(
-    supabaseUrl,
-    supabaseKey,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
+  try {
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseKey,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is needed for middleware to set cookies
+            resObj.cookies.set({
+              name,
+              value,
+              ...options
+            })
+          },
+          remove(name: string, options: any) {
+            // Delete cookies
+            resObj.cookies.set({
+              name,
+              value: '',
+              ...options,
+              maxAge: 0
+            })
+          },
         },
-        set(name: string, value: string, options: any) {
-          // This is needed for middleware to set cookies
-          response.headers.append('Set-Cookie', 
-            `${name}=${value}; Path=${options.path || '/'}; ${options.secure ? 'Secure; ' : ''}${
-              options.sameSite ? `SameSite=${options.sameSite}; ` : ''
-            }${options.maxAge ? `Max-Age=${options.maxAge}; ` : ''}${
-              options.domain ? `Domain=${options.domain}; ` : ''
-            }${options.httpOnly ? 'HttpOnly; ' : ''}`
-          )
-        },
-        remove(name: string, options: any) {
-          // Delete cookies by setting an expired date
-          response.headers.append('Set-Cookie', 
-            `${name}=; Path=${options.path || '/'}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; ${
-              options.secure ? 'Secure; ' : ''
-            }${options.sameSite ? `SameSite=${options.sameSite}; ` : ''}${
-              options.domain ? `Domain=${options.domain}; ` : ''
-            }${options.httpOnly ? 'HttpOnly; ' : ''}`
-          )
-        },
-      },
-    }
-  )
+      }
+    )
+    
+    return { supabase, response: resObj }
+  } catch (error) {
+    console.error('Error creating middleware Supabase client:', error)
+    return { supabase: null, response: resObj }
+  }
 }
 
 /**
- * Return a pre-configured server-side Supabase instance
+ * DO NOT USE THIS DIRECTLY in middleware
+ * This is left for backward compatibility with server components only
+ * Use createServerSupabaseClient() in RSC or createMiddlewareSupabaseClient(request) in middleware
  */
-export const serverSupabase = createServerSupabaseClient() 
+// export const serverSupabase = createServerSupabaseClient() // REMOVED as this causes issues in middleware 

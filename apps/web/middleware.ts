@@ -1,6 +1,6 @@
 /**
  * @file Next.js Middleware
- * @version 1.2.1
+ * @version 1.2.2
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -77,15 +77,18 @@ export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const fullPath = `${pathname}${search}`
   
+  // Create a response to handle cookie modifications
+  const response = NextResponse.next()
+  
   // Skip middleware for public routes
   if (isPublicRoute(pathname)) {
-    return NextResponse.next()
+    return response
   }
   
   // Special handling for auth parameter
   if (search.includes('auth=true')) {
     // Skip authentication check for routes explicitly marked as authenticated
-    return NextResponse.next()
+    return response
   }
   
   // CSRF protection for sensitive API routes
@@ -115,7 +118,12 @@ export async function middleware(request: NextRequest) {
   
   try {
     // Create server client to check authentication
-    const supabase = createMiddlewareSupabaseClient(request)
+    const { supabase, response: supabaseResponse } = createMiddlewareSupabaseClient(request, response)
+    
+    if (!supabase) {
+      throw new Error('Failed to create Supabase client')
+    }
+    
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -129,7 +137,7 @@ export async function middleware(request: NextRequest) {
     }
     
     // User is authenticated, allow access
-    return NextResponse.next()
+    return supabaseResponse
   } catch (error) {
     console.error('[Middleware] Authentication error:', error)
     
