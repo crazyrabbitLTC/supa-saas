@@ -13,7 +13,7 @@ export default function DashboardLayout({
   return (
     <>
       <DashboardDebug />
-      <div id="dashboard-root" className="fixed inset-0 z-50 bg-white dark:bg-gray-950">
+      <div id="dashboard-root" className="fixed inset-0 z-50 bg-background text-foreground">
         <SidebarProvider>
           <div className="flex h-full flex-col">
             {/* Main Content with Sidebar */}
@@ -30,7 +30,7 @@ export default function DashboardLayout({
             </div>
 
             {/* Footer */}
-            <footer className="shrink-0 border-t border-neutral-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-4 text-center text-sm text-neutral-500 dark:text-gray-400">
+            <footer className="shrink-0 border-t border-border bg-background p-4 text-center text-sm text-muted-foreground">
               <div className="mx-auto max-w-7xl">
                 <p>© 2024 Supa SaaS. All rights reserved.</p>
               </div>

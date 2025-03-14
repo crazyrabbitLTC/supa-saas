@@ -170,56 +170,70 @@ const data = {
 export function AppSidebar() {
   const { user, isLoading } = useAuth();
   
-  // Get user initials for avatar fallback
+  // Functions for user display
   const getUserInitials = () => {
-    if (!user?.email) return "U";
-    return user.email.charAt(0).toUpperCase();
+    if (!user) return "U";
+    
+    if (user.user_metadata?.full_name) {
+      const names = user.user_metadata.full_name.split(' ');
+      if (names.length >= 2) {
+        return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
+      }
+      return names[0].charAt(0).toUpperCase();
+    }
+    
+    if (user.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    
+    return "U";
   };
   
-  // Get user display name (from metadata if available, otherwise from email)
   const getDisplayName = () => {
-    if (user?.user_metadata?.full_name) {
+    if (!user) return "User";
+    
+    if (user.user_metadata?.full_name) {
       return user.user_metadata.full_name;
     }
-    if (user?.email) {
-      // Extract name from email (before @)
+    
+    if (user.email) {
       const emailName = user.email.split('@')[0];
-      // Capitalize first letter
       return emailName.charAt(0).toUpperCase() + emailName.slice(1);
     }
+    
     return "User";
   };
-  
+
   return (
-    <div className="h-full border-r border-neutral-200 bg-white dark:bg-gray-950 dark:border-gray-800 overflow-hidden">
-      <Sidebar className="h-full">
-        <ScrollArea className="h-full pb-12">
-          <SidebarGroup className="px-3 pb-1.5 pt-3">
-            <div className="flex items-center justify-between px-2.5">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger className="md:hidden" />
-                <Avatar className="size-7 rounded-sm">
-                  <AvatarImage src="/app-logo.svg" alt="App Logo" />
-                  <AvatarFallback className="rounded-sm bg-neutral-100 text-neutral-900 dark:bg-gray-800 dark:text-gray-100">
-                    SP
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="text-sm font-semibold text-neutral-900 dark:text-gray-100">
-                    Supa SaaS
-                  </div>
-                  <div className="text-xs text-neutral-500 dark:text-gray-400">
-                    Dashboard
-                  </div>
+    <Sidebar className="border-r border-border">
+      <SidebarContent className="pb-12">
+        <SidebarHeader>
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="md:hidden" />
+              <Avatar className="size-7 rounded-sm">
+                <AvatarImage src="/app-logo.svg" alt="App Logo" />
+                <AvatarFallback className="rounded-sm bg-muted text-foreground">
+                  SP
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-sm font-semibold text-foreground">
+                  Supa SaaS
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Dashboard
                 </div>
               </div>
-              <ModeToggle />
             </div>
-          </SidebarGroup>
+            <ModeToggle />
+          </div>
+        </SidebarHeader>
 
+        <ScrollArea>
           <SidebarGroup className="px-3 py-1.5">
             <SidebarMenu>
-              <SidebarMenuButton asChild className="bg-neutral-200 text-neutral-700 hover:bg-neutral-300 hover:text-neutral-900 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100">
+              <SidebarMenuButton asChild className="bg-secondary/20 text-secondary-foreground hover:bg-secondary/30">
                 <Link href="/dashboard">
                   <LayoutDashboard className="size-4" />
                   Dashboard
@@ -271,13 +285,13 @@ export function AppSidebar() {
 
         <SidebarFooter>
           <Link href="/dashboard/profile" className="block">
-            <div className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-100 dark:hover:bg-gray-800 transition-colors rounded-md cursor-pointer">
+            <div className="flex items-center gap-3 px-5 py-3 hover:bg-muted transition-colors rounded-md cursor-pointer">
               {isLoading ? (
-                <div className="size-9 rounded-full bg-neutral-200 dark:bg-gray-700 animate-pulse"></div>
+                <div className="size-9 rounded-full bg-muted animate-pulse"></div>
               ) : (
                 <Avatar className="size-9">
                   <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder-user.svg"} alt="User" />
-                  <AvatarFallback className="text-neutral-900 bg-neutral-100 dark:bg-gray-800 dark:text-gray-100">
+                  <AvatarFallback className="text-foreground bg-muted">
                     {getUserInitials()}
                   </AvatarFallback>
                 </Avatar>
@@ -285,35 +299,24 @@ export function AppSidebar() {
               <div className="grid gap-0.5">
                 {isLoading ? (
                   <>
-                    <div className="h-4 w-24 bg-neutral-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                    <div className="h-3 w-32 bg-neutral-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
+                    <div className="h-3 w-32 bg-muted rounded animate-pulse"></div>
                   </>
                 ) : (
                   <>
-                    <div className="text-sm font-medium text-neutral-900 dark:text-gray-100">
+                    <div className="text-sm font-medium text-foreground">
                       {getDisplayName()}
                     </div>
-                    <div className="text-xs text-neutral-500 dark:text-gray-400 truncate max-w-[120px]">
+                    <div className="text-xs text-muted-foreground truncate max-w-[120px]">
                       {user?.email || "loading..."}
                     </div>
                   </>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="ml-auto rounded-full"
-                asChild
-              >
-                <Link href="/dashboard/settings">
-                  <Settings className="size-4" />
-                  <span className="sr-only">Settings</span>
-                </Link>
-              </Button>
             </div>
           </Link>
         </SidebarFooter>
-      </Sidebar>
-    </div>
+      </SidebarContent>
+    </Sidebar>
   )
 }
