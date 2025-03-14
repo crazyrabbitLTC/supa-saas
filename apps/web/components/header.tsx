@@ -29,26 +29,17 @@ export function Header() {
     console.log("Logout initiated")
     await AuthService.logout()
     console.log("Logout completed, redirecting to home")
-    window.location.href = '/'
-  }, [])
+    router.push('/')
+  }, [router])
 
-  const handleDashboardClick = useCallback((e: React.MouseEvent) => {
-    console.log("Dashboard button clicked", { isAuthenticated, isLoading })
+  // This function handles dashboard navigation with direct URL for reliability
+  const navigateToDashboard = useCallback((e: React.MouseEvent) => {
+    e.preventDefault() // Prevent default link behavior
+    console.log("Dashboard navigation triggered", { isAuthenticated, isLoading })
     
-    if (!isAuthenticated) {
-      console.log("User not authenticated, preventing default and redirecting to login")
-      e.preventDefault()
-      window.location.href = '/login'
-    } else {
-      console.log("User authenticated, navigating to dashboard")
-      window.location.href = '/dashboard'
-    }
-  }, [isAuthenticated, isLoading])
-
-  const navigateToDashboard = useCallback(() => {
-    console.log("Go to Dashboard button clicked", { isAuthenticated, isLoading })
     if (isAuthenticated) {
-      console.log("Navigating to dashboard via direct navigation")
+      console.log("User is authenticated, navigating to dashboard using window.location")
+      // Use direct window location for more reliable navigation
       window.location.href = '/dashboard'
     } else {
       console.log("Not authenticated, redirecting to login")
@@ -82,13 +73,13 @@ export function Header() {
             >
               Documentation
             </Link>
-            <Link
+            <a
               href="/dashboard"
-              onClick={handleDashboardClick}
-              className="flex items-center text-sm font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+              onClick={navigateToDashboard}
+              className="flex items-center text-sm font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white cursor-pointer"
             >
               Dashboard
-            </Link>
+            </a>
           </nav>
         </div>
         <div className="ml-auto flex items-center space-x-4">
@@ -103,7 +94,10 @@ export function Header() {
                   variant="default" 
                   size="sm" 
                   className="mr-2"
-                  onClick={navigateToDashboard}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    navigateToDashboard(e)
+                  }}
                 >
                   Go to Dashboard
                 </Button>
@@ -124,7 +118,9 @@ export function Header() {
                       </div>
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={navigateToDashboard}>
+                    <DropdownMenuItem 
+                      onClick={(e) => navigateToDashboard(e as React.MouseEvent)}
+                    >
                       Dashboard
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {

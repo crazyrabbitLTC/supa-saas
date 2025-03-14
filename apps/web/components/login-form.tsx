@@ -82,14 +82,12 @@ export function LoginForm({
       await new Promise(resolve => setTimeout(resolve, 1000))
       
       try {
-        console.log(`Login: [${new Date().toISOString()}] Pushing to dashboard route`)
-        router.push('/dashboard')
-        console.log(`Login: [${new Date().toISOString()}] Router.push to dashboard completed`)
+        console.log(`Login: [${new Date().toISOString()}] Using direct window.location navigation to dashboard`)
         
-        // Add a callback to check if navigation was successful
-        setTimeout(() => {
-          console.log(`Login: [${new Date().toISOString()}] Current pathname after navigation attempt:`, window.location.pathname)
-        }, 1000)
+        // Use direct window.location navigation instead of router.push for more reliable navigation
+        window.location.href = '/dashboard'
+        
+        console.log(`Login: [${new Date().toISOString()}] Navigation initiated`)
       } catch (navigationError) {
         console.error("Navigation error", navigationError)
       }
