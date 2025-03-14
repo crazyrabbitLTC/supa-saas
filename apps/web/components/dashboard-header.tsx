@@ -42,7 +42,7 @@ export function DashboardHeader({
       []
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center bg-white border-b border-neutral-200 w-full">
+    <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center bg-white dark:bg-gray-950 border-b border-neutral-200 dark:border-gray-800 w-full">
       <div className="flex w-full items-center px-4">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />

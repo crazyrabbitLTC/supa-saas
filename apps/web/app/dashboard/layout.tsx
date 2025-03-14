@@ -13,7 +13,7 @@ export default function DashboardLayout({
   return (
     <>
       <DashboardDebug />
-      <div id="dashboard-root" className="fixed inset-0 z-50 bg-white">
+      <div id="dashboard-root" className="fixed inset-0 z-50 bg-white dark:bg-gray-950">
         <SidebarProvider>
           <div className="flex h-full flex-col">
             {/* Main Content with Sidebar */}
@@ -21,16 +21,16 @@ export default function DashboardLayout({
               <AppSidebar />
               <div className="flex-1 flex flex-col overflow-hidden w-full">
                 <DashboardHeader />
-                <div className="flex-1 overflow-auto">
-                  <div className="p-6 md:p-8">
+                <main className="flex-1 overflow-y-auto">
+                  <div className="p-6 md:p-8 min-h-full">
                     {children}
                   </div>
-                </div>
+                </main>
               </div>
             </div>
 
             {/* Footer */}
-            <footer className="shrink-0 border-t border-neutral-200 bg-white p-4 text-center text-sm text-neutral-500">
+            <footer className="shrink-0 border-t border-neutral-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-4 text-center text-sm text-neutral-500 dark:text-gray-400">
               <div className="mx-auto max-w-7xl">
                 <p>© 2024 Supa SaaS. All rights reserved.</p>
               </div>
