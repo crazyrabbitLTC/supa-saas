@@ -164,13 +164,13 @@ export default function ProfilePage() {
                   getDisplayName()
                 )}
               </h1>
-              <p className="text-muted-foreground">
+              <div className="text-muted-foreground">
                 {isLoading ? (
                   <div className="h-5 w-32 bg-neutral-200 rounded animate-pulse"></div>
                 ) : (
                   user?.email
                 )}
-              </p>
+              </div>
               <div className="flex items-center gap-2 pt-2">
                 <Badge variant="secondary">Free Plan</Badge>
                 <div className="text-xs text-muted-foreground">
