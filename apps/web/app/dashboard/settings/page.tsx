@@ -1,239 +1,229 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Switch } from "@/components/ui/switch"
+'use client'
+
+/**
+ * @file Settings page
+ * @version 1.0.0
+ * 
+ * Settings page for users to manage their account
+ */
+
+import { useState } from 'react'
+import { useAuth } from '@/components/providers/auth-provider'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AuthService } from '@/lib/auth'
+import { toast } from 'sonner'
+import { Switch } from '@/components/ui/switch'
 
 export default function SettingsPage() {
+  const { user } = useAuth()
+  const [isUpdating, setIsUpdating] = useState(false)
+
+  const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsUpdating(true)
+    
+    try {
+      // In a real application, you would update the user's profile here
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
+      toast.success('Your profile has been updated successfully.')
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      toast.error('Failed to update profile. Please try again.')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsUpdating(true)
+    
+    try {
+      // In a real application, you would change the password here
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
+      toast.success('Your password has been changed successfully.')
+    } catch (error) {
+      console.error('Error changing password:', error)
+      toast.error('Failed to change password. Please try again.')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   return (
-    <main id="settings-page" data-component="settings-page" className="dashboard-settings flex flex-1 flex-col gap-4 p-4 bg-white">
-      <div className="grid gap-6">
-        <Tabs defaultValue="general">
-          <div className="border-b">
-            <TabsList className="w-full justify-start rounded-none border-b px-0 mb-0">
-              <TabsTrigger 
-                value="general" 
-                className="rounded-b-none px-6 data-[state=active]:border-primary data-[state=active]:border-b-2"
-              >
-                General
-              </TabsTrigger>
-              <TabsTrigger 
-                value="profile" 
-                className="rounded-b-none px-6 data-[state=active]:border-primary data-[state=active]:border-b-2"
-              >
-                Profile
-              </TabsTrigger>
-              <TabsTrigger 
-                value="notifications" 
-                className="rounded-b-none px-6 data-[state=active]:border-primary data-[state=active]:border-b-2"
-              >
-                Notifications
-              </TabsTrigger>
-              <TabsTrigger 
-                value="billing" 
-                className="rounded-b-none px-6 data-[state=active]:border-primary data-[state=active]:border-b-2"
-              >
-                Billing
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <TabsContent value="general" className="pt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>General Settings</CardTitle>
-                <CardDescription>
-                  Manage your account settings and preferences.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+    <div className="container py-10">
+      <h1 className="text-3xl font-bold mb-6">Account Settings</h1>
+      
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="profile">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Information</CardTitle>
+              <CardDescription>
+                Update your account profile information and email address.
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleUpdateProfile}>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" placeholder="m@example.com" defaultValue="john@example.com" />
+                  <Input
+                    id="email"
+                    placeholder="Enter your email"
+                    defaultValue={user?.email || ''}
+                    disabled
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Your email address is used for signing in and cannot be changed.
+                  </p>
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input id="username" placeholder="johndoe" defaultValue="johndoe" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Theme</Label>
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="light-theme" className="flex cursor-pointer items-center space-x-2">
-                      <input 
-                        id="light-theme" 
-                        type="radio" 
-                        name="theme" 
-                        className="peer sr-only" 
-                        defaultChecked
-                      />
-                      <span className="size-4 rounded-full border border-primary shrink-0 bg-white peer-checked:bg-primary peer-checked:border-primary"></span>
-                      <span>Light</span>
-                    </Label>
-                    <Label htmlFor="dark-theme" className="flex cursor-pointer items-center space-x-2">
-                      <input 
-                        id="dark-theme" 
-                        type="radio" 
-                        name="theme" 
-                        className="peer sr-only" 
-                      />
-                      <span className="size-4 rounded-full border border-neutral-200 shrink-0 bg-white peer-checked:bg-primary peer-checked:border-primary"></span>
-                      <span>Dark</span>
-                    </Label>
-                    <Label htmlFor="system-theme" className="flex cursor-pointer items-center space-x-2">
-                      <input 
-                        id="system-theme" 
-                        type="radio" 
-                        name="theme" 
-                        className="peer sr-only"
-                      />
-                      <span className="size-4 rounded-full border border-neutral-200 shrink-0 bg-white peer-checked:bg-primary peer-checked:border-primary"></span>
-                      <span>System</span>
-                    </Label>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button>Save Changes</Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="profile" className="pt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile</CardTitle>
-                <CardDescription>
-                  Update your profile information.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="full-name">Full Name</Label>
-                  <Input id="full-name" placeholder="John Doe" defaultValue="John Doe" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="profile-bio">Bio</Label>
-                  <Textarea 
-                    id="profile-bio" 
-                    placeholder="Tell us about yourself" 
-                    defaultValue="I'm a software developer with a passion for building beautiful and functional web applications."
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Enter your full name"
+                    defaultValue={user?.user_metadata?.full_name || ''}
                   />
                 </div>
               </CardContent>
               <CardFooter>
-                <Button>Save Changes</Button>
+                <Button type="submit" disabled={isUpdating}>
+                  {isUpdating ? 'Saving...' : 'Save Changes'}
+                </Button>
               </CardFooter>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="notifications" className="pt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Notification Preferences</CardTitle>
-                <CardDescription>
-                  Manage how you receive notifications.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Email Notifications</h3>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="email-marketing">Marketing emails</Label>
-                      <p className="text-sm text-neutral-500">Receive emails about new products, features, and more.</p>
-                    </div>
-                    <Switch id="email-marketing" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="email-updates">Product updates</Label>
-                      <p className="text-sm text-neutral-500">Receive emails about updates to products you use.</p>
-                    </div>
-                    <Switch id="email-updates" defaultChecked />
-                  </div>
+            </form>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle>Change Password</CardTitle>
+              <CardDescription>
+                Update your password to ensure your account remains secure.
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleChangePassword}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current_password">Current Password</Label>
+                  <Input
+                    id="current_password"
+                    type="password"
+                    placeholder="Enter your current password"
+                  />
                 </div>
-                <Separator />
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Push Notifications</h3>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="push-everything">Everything</Label>
-                      <p className="text-sm text-neutral-500">Receive all push notifications.</p>
-                    </div>
-                    <Switch id="push-everything" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="push-mentions">Mentions</Label>
-                      <p className="text-sm text-neutral-500">Receive push notifications when you're mentioned.</p>
-                    </div>
-                    <Switch id="push-mentions" defaultChecked />
-                  </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new_password">New Password</Label>
+                  <Input
+                    id="new_password"
+                    type="password"
+                    placeholder="Enter your new password"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="confirm_password">Confirm Password</Label>
+                  <Input
+                    id="confirm_password"
+                    type="password"
+                    placeholder="Confirm your new password"
+                  />
                 </div>
               </CardContent>
               <CardFooter>
-                <Button>Save Preferences</Button>
+                <Button type="submit" disabled={isUpdating}>
+                  {isUpdating ? 'Updating...' : 'Change Password'}
+                </Button>
               </CardFooter>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="billing" className="pt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Billing Information</CardTitle>
-                <CardDescription>
-                  Manage your billing information and view your billing history.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Current Plan</h3>
-                  <div className="rounded-lg border border-neutral-200 p-4">
-                    <div className="flex justify-between">
-                      <div>
-                        <h4 className="font-semibold">Professional Plan</h4>
-                        <p className="text-sm text-neutral-500">$29/month, billed monthly</p>
-                      </div>
-                      <Button variant="outline" size="sm">Change Plan</Button>
-                    </div>
+            </form>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="billing">
+          <Card>
+            <CardHeader>
+              <CardTitle>Billing & Subscription</CardTitle>
+              <CardDescription>
+                Manage your subscription plan and payment methods.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Free Plan</div>
+                    <div className="text-sm text-muted-foreground">Basic features with limitations</div>
                   </div>
+                  <Button variant="outline">Upgrade</Button>
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Payment Method</h3>
-                  <div className="rounded-lg border border-neutral-200 p-4">
-                    <div className="flex justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="size-10 rounded-md bg-neutral-100 flex items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-6">
-                            <rect width="20" height="14" x="2" y="5" rx="2" />
-                            <line x1="2" x2="22" y1="10" y2="10" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="font-medium">Visa ending in 4242</p>
-                          <p className="text-sm text-neutral-500">Expires 12/2025</p>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm">Edit</Button>
-                    </div>
+              </div>
+              
+              <div className="rounded-lg border p-4">
+                <div className="font-medium mb-2">Payment Methods</div>
+                <div className="text-sm text-muted-foreground mb-4">No payment methods added yet.</div>
+                <Button variant="outline" size="sm">Add Payment Method</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle>Notification Preferences</CardTitle>
+              <CardDescription>
+                Configure how and when you receive notifications.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="font-medium">Email Notifications</div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div>Account updates</div>
+                    <div className="text-sm text-muted-foreground">Receive emails about your account activity</div>
                   </div>
-                  <Button variant="outline" size="sm" className="w-full">Add Payment Method</Button>
+                  <Switch defaultChecked />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </main>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div>Marketing emails</div>
+                    <div className="text-sm text-muted-foreground">Receive emails about new features and offers</div>
+                  </div>
+                  <Switch />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div>Security alerts</div>
+                    <div className="text-sm text-muted-foreground">Receive emails about your account security</div>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button>Save Preferences</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 } 
