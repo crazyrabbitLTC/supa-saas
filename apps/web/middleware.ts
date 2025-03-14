@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 
 export async function middleware(request: NextRequest) {
+  console.log("Middleware executing for path:", request.nextUrl.pathname)
   const res = NextResponse.next()
   
   // Create a Supabase client configured to use cookies
@@ -10,6 +11,11 @@ export async function middleware(request: NextRequest) {
   
   // Refresh session if expired - required for Server Components
   const { data: { session } } = await supabase.auth.getSession()
+  console.log("Middleware session check:", { 
+    path: request.nextUrl.pathname,
+    hasSession: !!session,
+    sessionUser: session?.user?.email 
+  })
   
   // Get the pathname from the URL
   const path = request.nextUrl.pathname
@@ -22,6 +28,7 @@ export async function middleware(request: NextRequest) {
   
   // If trying to access dashboard without auth, redirect to homepage
   if (isProtectedRoute && !session) {
+    console.log("Middleware redirecting unauthenticated user from dashboard to homepage")
     const redirectUrl = new URL('/', request.url)
     return NextResponse.redirect(redirectUrl)
   }
@@ -29,10 +36,12 @@ export async function middleware(request: NextRequest) {
   // If user is already authenticated and trying to access auth routes,
   // redirect them to the dashboard
   if (isAuthRoute && session) {
+    console.log("Middleware redirecting authenticated user from auth page to dashboard")
     const redirectUrl = new URL('/dashboard', request.url)
     return NextResponse.redirect(redirectUrl)
   }
   
+  console.log("Middleware completed with no redirects for path:", request.nextUrl.pathname)
   return res
 }
 

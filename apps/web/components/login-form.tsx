@@ -58,22 +58,34 @@ export function LoginForm({
   const onSubmit = async (data: LoginFormData) => {
     try {
       setIsLoading(true)
+      console.log("Login attempt started", { email: data.email })
       
       const result = await AuthService.login({
         email: data.email,
         password: data.password,
       })
 
+      console.log("Login attempt result", { success: result.success })
+
       if (!result.success) {
+        console.error("Login failed", { error: result.error })
         toast.error(result.error || 'Login failed')
         return
       }
 
       // Show success message and redirect
+      console.log("Login successful, attempting redirect to dashboard")
       toast.success('Logged in successfully!')
-      router.push('/dashboard')
+      
+      try {
+        console.log("Pushing to dashboard route")
+        router.push('/dashboard')
+        console.log("Router.push to dashboard completed")
+      } catch (navigationError) {
+        console.error("Navigation error", navigationError)
+      }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error("Unexpected login error", error)
       toast.error('An unexpected error occurred')
     } finally {
       setIsLoading(false)

@@ -99,6 +99,7 @@ export const AuthService = {
     email,
     password,
   }: LoginCredentials): Promise<LoginResponse> {
+    console.log("AuthService.login: Attempting login", { email })
     try {
       const supabase = browserSupabase
       
@@ -108,6 +109,7 @@ export const AuthService = {
       })
 
       if (error) {
+        console.error("AuthService.login: Login error from Supabase", { error: error.message })
         return {
           success: false,
           error: error.message,
@@ -115,15 +117,21 @@ export const AuthService = {
       }
 
       if (!data.user) {
+        console.error("AuthService.login: No user returned from successful auth")
         return {
           success: false,
           error: 'Login failed',
         }
       }
 
+      console.log("AuthService.login: Login successful", { 
+        userId: data.user.id,
+        email: data.user.email,
+        sessionExpires: data.session?.expires_at
+      })
       return { success: true }
     } catch (error) {
-      console.error('Unexpected login error:', error)
+      console.error('AuthService.login: Unexpected login error:', error)
       return {
         success: false,
         error: 'An unexpected error occurred during login',

@@ -39,8 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Fetch the current session when the component mounts
     const fetchSession = async () => {
+      console.log("AuthProvider: Fetching initial session")
       try {
         const currentSession = await AuthService.getSession()
+        console.log("AuthProvider: Initial session result", { 
+          hasSession: !!currentSession,
+          user: currentSession?.user?.email
+        })
         setSession(currentSession)
         setUser(currentSession?.user || null)
       } catch (error) {
@@ -50,20 +55,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Listen for authentication state changes
+    const { data: { subscription } } = browserSupabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        console.log("AuthProvider: Auth state changed", { event, user: currentSession?.user?.email })
+        
+        setSession(currentSession)
+        setUser(currentSession?.user || null)
+        setIsLoading(false)
+      }
+    )
+
     fetchSession()
 
-    // Subscribe to auth state changes
-    const {
-      data: { subscription },
-    } = browserSupabase.auth.onAuthStateChange((event, newSession) => {
-      console.log('Auth state changed:', event)
-      setSession(newSession)
-      setUser(newSession?.user || null)
-      setIsLoading(false)
-    })
-
     return () => {
-      // Unsubscribe when the component unmounts
       subscription.unsubscribe()
     }
   }, [])

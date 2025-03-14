@@ -5,7 +5,7 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/providers/auth-provider"
 import { AuthService } from "@/lib/auth"
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   DropdownMenu,
@@ -19,20 +19,42 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 export function Header() {
   const { isAuthenticated, user, isLoading } = useAuth()
   const router = useRouter()
+  
+  // Log auth state when it changes
+  useEffect(() => {
+    console.log("Auth state in Header:", { isAuthenticated, isLoading, userEmail: user?.email })
+  }, [isAuthenticated, isLoading, user])
 
   const handleLogout = useCallback(async () => {
+    console.log("Logout initiated")
     await AuthService.logout()
+    console.log("Logout completed, redirecting to home")
     router.push('/')
   }, [router])
 
   const handleDashboardClick = useCallback((e: React.MouseEvent) => {
+    console.log("Dashboard button clicked", { isAuthenticated, isLoading })
+    
     if (!isAuthenticated) {
+      console.log("User not authenticated, preventing default and redirecting to login")
       e.preventDefault()
       router.push('/login')
     } else {
+      console.log("User authenticated, navigating to dashboard")
       router.push('/dashboard')
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, isLoading, router])
+
+  const navigateToDashboard = useCallback(() => {
+    console.log("Go to Dashboard button clicked", { isAuthenticated, isLoading })
+    if (isAuthenticated) {
+      console.log("Navigating to dashboard via programmatic navigation")
+      router.push('/dashboard')
+    } else {
+      console.log("Not authenticated, redirecting to login")
+      router.push('/login')
+    }
+  }, [isAuthenticated, isLoading, router])
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-200 bg-white dark:bg-gray-950 dark:border-gray-800">
@@ -81,7 +103,7 @@ export function Header() {
                   variant="default" 
                   size="sm" 
                   className="mr-2"
-                  onClick={() => router.push('/dashboard')}
+                  onClick={navigateToDashboard}
                 >
                   Go to Dashboard
                 </Button>
@@ -102,10 +124,13 @@ export function Header() {
                       </div>
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                    <DropdownMenuItem onClick={navigateToDashboard}>
                       Dashboard
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
+                    <DropdownMenuItem onClick={() => {
+                      console.log("Settings clicked, navigating");
+                      router.push('/dashboard/settings');
+                    }}>
                       Settings
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
