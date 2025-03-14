@@ -9,7 +9,16 @@ export async function middleware(request: NextRequest) {
   const supabase = createMiddlewareClient({ req: request, res })
   
   // Refresh session if expired - required for Server Components
-  await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  // Check if the request is for a protected route (dashboard)
+  const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard')
+  
+  // If trying to access dashboard without auth, redirect to homepage
+  if (isProtectedRoute && !session) {
+    const redirectUrl = new URL('/', request.url)
+    return NextResponse.redirect(redirectUrl)
+  }
   
   return res
 }
