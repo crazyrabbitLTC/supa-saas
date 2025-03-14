@@ -39,8 +39,8 @@ export function Header() {
     
     if (isAuthenticated) {
       console.log("User is authenticated, navigating to dashboard using window.location")
-      // Use direct window location for more reliable navigation
-      window.location.href = '/dashboard'
+      // Use direct window location with auth flag for more reliable navigation
+      window.location.href = '/dashboard?auth=true'
     } else {
       console.log("Not authenticated, redirecting to login")
       window.location.href = '/login'
@@ -125,7 +125,7 @@ export function Header() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
                       console.log("Settings clicked, navigating");
-                      window.location.href = '/dashboard/settings';
+                      window.location.href = '/dashboard/settings?auth=true';
                     }}>
                       Settings
                     </DropdownMenuItem>

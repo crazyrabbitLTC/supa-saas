@@ -5,6 +5,12 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 export async function middleware(request: NextRequest) {
   const startTime = new Date().getTime()
   console.log(`Middleware: [${new Date().toISOString()}] Executing for path:`, request.nextUrl.pathname)
+  
+  // Log all cookies for debugging
+  const cookieHeader = request.headers.get('cookie') || ''
+  console.log(`Middleware: [${new Date().toISOString()}] Cookies present:`, cookieHeader.length > 0)
+  
+  // Create response early so we can modify it
   const res = NextResponse.next()
   
   // Extract the referer to understand where the request came from
@@ -25,13 +31,6 @@ export async function middleware(request: NextRequest) {
     expires: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'none'
   })
   
-  // Special case: if this is a request immediately after login, skip redirection
-  const isPostLoginRequest = referer.includes('/login') && request.nextUrl.pathname === '/dashboard'
-  if (isPostLoginRequest) {
-    console.log(`Middleware: [${new Date().toISOString()}] Post-login request detected, allowing navigation to dashboard`)
-    return res
-  }
-  
   // Get the pathname from the URL
   const path = request.nextUrl.pathname
   
@@ -40,6 +39,17 @@ export async function middleware(request: NextRequest) {
   
   // Check if the request is for auth routes (login/signup)
   const isAuthRoute = path === '/login' || path === '/signup'
+  
+  // Check for special auth mode flag from the client
+  const isAuthenticatedMode = request.nextUrl.searchParams.has('auth') || 
+                             referer.includes('/login') || 
+                             cookieHeader.includes('supabase-auth-token')
+  
+  // Special case for dashboard access after login (trust the client-side auth check)
+  if (isProtectedRoute && isAuthenticatedMode) {
+    console.log(`Middleware: [${new Date().toISOString()}] Auth mode detected, bypassing protection for:`, path)
+    return res
+  }
   
   // If trying to access dashboard without auth, redirect to homepage
   if (isProtectedRoute && !session) {

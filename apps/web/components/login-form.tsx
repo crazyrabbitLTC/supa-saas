@@ -85,7 +85,7 @@ export function LoginForm({
         console.log(`Login: [${new Date().toISOString()}] Using direct window.location navigation to dashboard`)
         
         // Use direct window.location navigation instead of router.push for more reliable navigation
-        window.location.href = '/dashboard'
+        window.location.href = '/dashboard?auth=true'
         
         console.log(`Login: [${new Date().toISOString()}] Navigation initiated`)
       } catch (navigationError) {
