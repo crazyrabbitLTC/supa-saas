@@ -44,10 +44,10 @@ export function DashboardHeader({
   return (
     <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center bg-white border-b border-neutral-200 w-full">
       <div className="flex w-full items-center px-4">
-        <div className="flex items-center gap-2 w-full">
+        <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb className="w-full">
+          <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
