@@ -22,7 +22,9 @@ export default function DashboardLayout({
               <div className="flex-1 flex flex-col overflow-hidden w-full">
                 <DashboardHeader />
                 <div className="flex-1 overflow-auto">
-                  {children}
+                  <div className="p-6 md:p-8">
+                    {children}
+                  </div>
                 </div>
               </div>
             </div>

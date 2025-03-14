@@ -18,7 +18,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="container py-10">
+      <div>
         <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
         
         <div className="grid gap-6 md:grid-cols-2">
