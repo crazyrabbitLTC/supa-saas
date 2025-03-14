@@ -17,13 +17,15 @@ export default function DashboardLayout({
         <SidebarProvider>
           <div className="flex h-full flex-col">
             {/* Main Content with Sidebar */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden min-h-0">
               <AppSidebar />
               <div className="flex-1 flex flex-col overflow-hidden w-full">
                 <DashboardHeader />
-                <main className="flex-1 overflow-y-auto">
-                  <div className="p-6 md:p-8 min-h-full">
-                    {children}
+                <main className="flex-1 overflow-y-auto min-h-0">
+                  <div className="p-6 md:p-8 h-full flex flex-col">
+                    <div className="flex-1">
+                      {children}
+                    </div>
                   </div>
                 </main>
               </div>

@@ -205,32 +205,32 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-border">
-      <SidebarContent className="pb-12">
-        <SidebarHeader>
-          <div className="flex items-center justify-between px-5 py-4">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="md:hidden" />
-              <Avatar className="size-7 rounded-sm">
-                <AvatarImage src="/app-logo.svg" alt="App Logo" />
-                <AvatarFallback className="rounded-sm bg-muted text-foreground">
-                  SP
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="text-sm font-semibold text-foreground">
-                  Supa SaaS
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Dashboard
-                </div>
+    <Sidebar className="border-r border-border flex flex-col h-full">
+      <SidebarHeader>
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="md:hidden" />
+            <Avatar className="size-7 rounded-sm">
+              <AvatarImage src="/app-logo.svg" alt="App Logo" />
+              <AvatarFallback className="rounded-sm bg-muted text-foreground">
+                SP
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="text-sm font-semibold text-foreground">
+                Supa SaaS
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Dashboard
               </div>
             </div>
-            <ModeToggle />
           </div>
-        </SidebarHeader>
+          <ModeToggle />
+        </div>
+      </SidebarHeader>
 
-        <ScrollArea>
+      <ScrollArea className="flex-1">
+        <SidebarContent>
           <SidebarGroup className="px-3 py-1.5">
             <SidebarMenu>
               <SidebarMenuButton asChild className="bg-secondary/20 text-secondary-foreground hover:bg-secondary/30">
@@ -281,42 +281,42 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenu>
           </SidebarGroup>
-        </ScrollArea>
+        </SidebarContent>
+      </ScrollArea>
 
-        <SidebarFooter>
-          <Link href="/dashboard/profile" className="block">
-            <div className="flex items-center gap-3 px-5 py-3 hover:bg-muted transition-colors rounded-md cursor-pointer">
+      <SidebarFooter className="mt-auto border-t border-border">
+        <Link href="/dashboard/profile" className="block">
+          <div className="flex items-center gap-3 px-5 py-3 hover:bg-muted transition-colors cursor-pointer">
+            {isLoading ? (
+              <div className="size-9 rounded-full bg-muted animate-pulse"></div>
+            ) : (
+              <Avatar className="size-9">
+                <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder-user.svg"} alt="User" />
+                <AvatarFallback className="text-foreground bg-muted">
+                  {getUserInitials()}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className="grid gap-0.5">
               {isLoading ? (
-                <div className="size-9 rounded-full bg-muted animate-pulse"></div>
+                <>
+                  <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
+                  <div className="h-3 w-32 bg-muted rounded animate-pulse"></div>
+                </>
               ) : (
-                <Avatar className="size-9">
-                  <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder-user.svg"} alt="User" />
-                  <AvatarFallback className="text-foreground bg-muted">
-                    {getUserInitials()}
-                  </AvatarFallback>
-                </Avatar>
+                <>
+                  <div className="text-sm font-medium text-foreground">
+                    {getDisplayName()}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate max-w-[120px]">
+                    {user?.email || "loading..."}
+                  </div>
+                </>
               )}
-              <div className="grid gap-0.5">
-                {isLoading ? (
-                  <>
-                    <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
-                    <div className="h-3 w-32 bg-muted rounded animate-pulse"></div>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-sm font-medium text-foreground">
-                      {getDisplayName()}
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate max-w-[120px]">
-                      {user?.email || "loading..."}
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
-          </Link>
-        </SidebarFooter>
-      </SidebarContent>
+          </div>
+        </Link>
+      </SidebarFooter>
     </Sidebar>
   )
 }
