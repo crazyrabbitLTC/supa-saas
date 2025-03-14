@@ -40,6 +40,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/components/providers/auth-provider"
 
 const data = {
   user: {
@@ -166,6 +167,28 @@ const data = {
 }
 
 export function AppSidebar() {
+  const { user, isLoading } = useAuth();
+  
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user?.email) return "U";
+    return user.email.charAt(0).toUpperCase();
+  };
+  
+  // Get user display name (from metadata if available, otherwise from email)
+  const getDisplayName = () => {
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name;
+    }
+    if (user?.email) {
+      // Extract name from email (before @)
+      const emailName = user.email.split('@')[0];
+      // Capitalize first letter
+      return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+    }
+    return "User";
+  };
+  
   return (
     <div className="h-full border-r border-neutral-200 bg-white overflow-hidden">
       <Sidebar className="h-full">
@@ -247,19 +270,32 @@ export function AppSidebar() {
         <SidebarFooter>
           <Link href="/dashboard/profile" className="block">
             <div className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-100 transition-colors rounded-md cursor-pointer">
-              <Avatar className="size-9">
-                <AvatarImage src="/placeholder-user.svg" alt="User" />
-                <AvatarFallback className="text-neutral-900 bg-neutral-100">
-                  JD
-                </AvatarFallback>
-              </Avatar>
+              {isLoading ? (
+                <div className="size-9 rounded-full bg-neutral-200 animate-pulse"></div>
+              ) : (
+                <Avatar className="size-9">
+                  <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder-user.svg"} alt="User" />
+                  <AvatarFallback className="text-neutral-900 bg-neutral-100">
+                    {getUserInitials()}
+                  </AvatarFallback>
+                </Avatar>
+              )}
               <div className="grid gap-0.5">
-                <div className="text-sm font-medium text-neutral-900">
-                  John Doe
-                </div>
-                <div className="text-xs text-neutral-500">
-                  john@example.com
-                </div>
+                {isLoading ? (
+                  <>
+                    <div className="h-4 w-24 bg-neutral-200 rounded animate-pulse"></div>
+                    <div className="h-3 w-32 bg-neutral-200 rounded animate-pulse"></div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-sm font-medium text-neutral-900">
+                      {getDisplayName()}
+                    </div>
+                    <div className="text-xs text-neutral-500 truncate max-w-[120px]">
+                      {user?.email || "loading..."}
+                    </div>
+                  </>
+                )}
               </div>
               <Button
                 variant="ghost"
