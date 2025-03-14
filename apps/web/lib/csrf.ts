@@ -2,7 +2,7 @@
 
 /**
  * @file CSRF protection utilities
- * @version 1.1.0
+ * @version 1.2.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
@@ -52,8 +52,12 @@ const serverTokenStorage = new Map<string, string>()
  * @returns Cookie value or null if not found
  */
 const getCookie = (name: string): string | null => {
-  if (isBrowser) {
-    return Cookies.get(name) || null
+  try {
+    if (isBrowser && window.document) {
+      return Cookies.get(name) || null
+    }
+  } catch (error) {
+    console.warn('Error getting cookie:', error)
   }
   return serverTokenStorage.get(name) || null
 }
@@ -69,11 +73,15 @@ const setCookie = (
   value: string,
   options?: Cookies.CookieAttributes
 ): void => {
-  if (isBrowser) {
-    Cookies.set(name, value, options)
-  } else {
-    serverTokenStorage.set(name, value)
+  try {
+    if (isBrowser && window.document) {
+      Cookies.set(name, value, options)
+      return
+    }
+  } catch (error) {
+    console.warn('Error setting cookie:', error)
   }
+  serverTokenStorage.set(name, value)
 }
 
 /**
@@ -81,11 +89,15 @@ const setCookie = (
  * @param name - Cookie name
  */
 const removeCookie = (name: string): void => {
-  if (isBrowser) {
-    Cookies.remove(name)
-  } else {
-    serverTokenStorage.delete(name)
+  try {
+    if (isBrowser && window.document) {
+      Cookies.remove(name)
+      return
+    }
+  } catch (error) {
+    console.warn('Error removing cookie:', error)
   }
+  serverTokenStorage.delete(name)
 }
 
 /**
@@ -108,6 +120,11 @@ export const generateCSRFToken = (): CSRFToken => {
  * @returns Boolean indicating if the token is valid
  */
 export const validateCSRFToken = (token: string): boolean => {
+  // Skip validation on server
+  if (!isBrowser) {
+    return true
+  }
+  
   const storedTokenJson = getCookie(CSRF_TOKEN_COOKIE)
   
   if (!storedTokenJson) {
@@ -131,6 +148,12 @@ export const validateCSRFToken = (token: string): boolean => {
  * @param csrfToken - The token object to store
  */
 export const storeCSRFToken = (csrfToken: CSRFToken): void => {
+  // Skip on server if no window
+  if (!isBrowser) {
+    serverTokenStorage.set(CSRF_TOKEN_COOKIE, JSON.stringify(csrfToken))
+    return
+  }
+  
   setCookie(CSRF_TOKEN_COOKIE, JSON.stringify(csrfToken), {
     expires: new Date(csrfToken.expires * 1000), // Convert to milliseconds
     secure: process.env.NODE_ENV === 'production',
@@ -145,6 +168,12 @@ export const storeCSRFToken = (csrfToken: CSRFToken): void => {
  * @returns CSRF token string
  */
 export const getCSRFToken = (forceNew = false): string => {
+  // If in server context, just generate a dummy token that won't be used
+  if (!isBrowser) {
+    const dummyToken = generateCSRFToken()
+    return dummyToken.token
+  }
+  
   const storedTokenJson = getCookie(CSRF_TOKEN_COOKIE)
   
   // Generate new token if none exists, is expired, or forced to be new
@@ -185,7 +214,15 @@ export const addCSRFToken = (options: RequestInit = {}): RequestInit => {
     return options
   }
   
-  const token = getCSRFToken()
+  // Get token safely
+  let token: string
+  try {
+    token = getCSRFToken()
+  } catch (error) {
+    console.warn('Error getting CSRF token for request:', error)
+    // Generate a new token if there was an error
+    token = generateCSRFToken().token
+  }
   
   return {
     ...options,

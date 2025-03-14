@@ -1,216 +1,196 @@
 'use client'
 
 /**
- * @file Secure fetch utility
- * @version 1.1.0
+ * @file Secure Fetch Utility
+ * @version 1.2.0
  * @status STABLE - DO NOT MODIFY WITHOUT TESTS
  * @lastModified 2023-06-15
  * 
- * Provides a secure fetch utility that automatically adds CSRF tokens
- * to API requests to protect against CSRF attacks.
- * Enhanced to work in both client and server environments.
+ * Provides enhanced fetch functions with security features:
+ * - CSRF protection
+ * - Consistent error handling
+ * - Type safety
+ * - SSR compatibility
  * 
  * IMPORTANT:
- * - Use this instead of native fetch for all API calls that modify data
- * - Ensures CSRF token is included in the request headers
- * - Safe to use in both client and server contexts
+ * - Any modification requires testing in both client and server contexts
+ * - Ensure security features remain intact
  * 
  * Functionality:
- * - Automatic CSRF token inclusion
- * - Type-safe response handling
- * - Error handling with standardized format
- * - Isomorphic implementation (works in SSR)
+ * - Type-safe API requests
+ * - CSRF protection
+ * - Error handling with consistent response format
+ * - Works in both browser and server contexts
  */
 
 import { addCSRFToken } from './csrf'
 
-// Check if we're running in a browser environment
+// Check if in browser environment
 const isBrowser = typeof window !== 'undefined'
 
-// Type for standardized API error responses
-export interface ApiError {
-  message: string
-  code?: string
-  details?: any
-}
-
 /**
- * Options for the secureFetch function
+ * Standard API response format
  */
-export interface SecureFetchOptions extends RequestInit {
-  skipCSRF?: boolean
-}
-
-/**
- * Securely fetch data from an API endpoint with automatic CSRF token handling
- * @param url - The URL to fetch from
- * @param options - Fetch options including skipCSRF to bypass CSRF token
- * @returns Promise resolving to the JSON response data
- * @throws Error with API error details when request fails
- */
-export async function secureFetch<T = any>(
-  url: string,
-  options: SecureFetchOptions = {}
-): Promise<T> {
-  const { skipCSRF = false, ...fetchOptions } = options
-  
-  // Only add CSRF token if not skipped and in browser context
-  const finalOptions = (skipCSRF || !isBrowser) 
-    ? fetchOptions
-    : addCSRFToken(fetchOptions)
-  
-  try {
-    const response = await fetch(url, finalOptions)
-    
-    // Handle non-success responses
-    if (!response.ok) {
-      let errorData: ApiError = {
-        message: `API request failed with status ${response.status}`,
-      }
-      
-      // Try to parse error response as JSON
-      try {
-        const errorJson = await response.json()
-        errorData = {
-          ...errorData,
-          ...errorJson,
-        }
-      } catch {
-        // If error response is not valid JSON, just use status text
-        errorData.message = response.statusText || errorData.message
-      }
-      
-      throw new Error(errorData.message, { cause: errorData })
-    }
-    
-    // Check if response is empty
-    const contentType = response.headers.get('content-type')
-    if (contentType && contentType.includes('application/json')) {
-      return await response.json() as T
-    }
-    
-    // Return empty object for non-JSON responses
-    return {} as T
-  } catch (error) {
-    // Rethrow errors from the fetch operation
-    if (error instanceof Error) {
-      throw error
-    }
-    
-    // Handle unexpected errors
-    throw new Error('An unexpected error occurred during the API request', {
-      cause: error,
-    })
+export interface ApiResponse<T = any> {
+  success: boolean
+  data?: T
+  error?: {
+    message: string
+    code?: string
+    status?: number
   }
 }
 
 /**
- * Secure GET request with automatic CSRF token handling
- * @param url - The URL to fetch from
- * @param options - Additional fetch options
- * @returns Promise resolving to the JSON response data
+ * Enhanced fetch function with security features
+ * @param url - URL to fetch
+ * @param options - Fetch options
+ * @returns Promise with response
  */
-export function secureGet<T = any>(
+export async function secureFetch<T = any>(
   url: string,
-  options: SecureFetchOptions = {}
-): Promise<T> {
+  options: RequestInit = {}
+): Promise<ApiResponse<T>> {
+  try {
+    // Only add CSRF token in browser context
+    const secureOptions = isBrowser ? addCSRFToken(options) : options
+
+    // Set default headers
+    secureOptions.headers = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...secureOptions.headers,
+    }
+
+    const response = await fetch(url, secureOptions)
+    
+    // Try to parse JSON response
+    let data
+    try {
+      data = await response.json()
+    } catch (e) {
+      if (response.ok && response.status === 204) {
+        // No content is ok
+        data = null
+      } else {
+        throw new Error(`Failed to parse JSON response: ${(e as Error).message}`)
+      }
+    }
+
+    // Check if the response is successful
+    if (!response.ok) {
+      return {
+        success: false,
+        error: {
+          message: data?.message || data?.error || 'An unknown error occurred',
+          code: data?.code,
+          status: response.status,
+        },
+      }
+    }
+
+    // Return successful response
+    return {
+      success: true,
+      data,
+    }
+  } catch (error) {
+    console.error('Secure fetch error:', error)
+    return {
+      success: false,
+      error: {
+        message: (error as Error).message || 'Network error occurred',
+        code: 'NETWORK_ERROR',
+      },
+    }
+  }
+}
+
+/**
+ * Enhanced GET request with security features
+ * @param url - URL to fetch
+ * @param options - Additional fetch options
+ * @returns Promise with typed response
+ */
+export async function secureGet<T = any>(
+  url: string,
+  options: Omit<RequestInit, 'method'> = {}
+): Promise<ApiResponse<T>> {
   return secureFetch<T>(url, {
+    ...options,
     method: 'GET',
-    ...options,
-    // GET requests typically don't need CSRF protection
-    skipCSRF: options.skipCSRF !== false,
   })
 }
 
 /**
- * Secure POST request with automatic CSRF token handling
- * @param url - The URL to post to
- * @param data - The data to send in the request body
+ * Enhanced POST request with security features
+ * @param url - URL to fetch
+ * @param body - Request body
  * @param options - Additional fetch options
- * @returns Promise resolving to the JSON response data
+ * @returns Promise with typed response
  */
-export function securePost<T = any>(
+export async function securePost<T = any, B = any>(
   url: string,
-  data?: any,
-  options: SecureFetchOptions = {}
-): Promise<T> {
+  body?: B,
+  options: Omit<RequestInit, 'method' | 'body'> = {}
+): Promise<ApiResponse<T>> {
   return secureFetch<T>(url, {
+    ...options,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    body: data ? JSON.stringify(data) : undefined,
-    ...options,
-    // Skip CSRF token in server context
-    skipCSRF: !isBrowser || options.skipCSRF === true,
+    body: body ? JSON.stringify(body) : undefined,
   })
 }
 
 /**
- * Secure PUT request with automatic CSRF token handling
- * @param url - The URL to put to
- * @param data - The data to send in the request body
+ * Enhanced PUT request with security features
+ * @param url - URL to fetch
+ * @param body - Request body
  * @param options - Additional fetch options
- * @returns Promise resolving to the JSON response data
+ * @returns Promise with typed response
  */
-export function securePut<T = any>(
+export async function securePut<T = any, B = any>(
   url: string,
-  data?: any,
-  options: SecureFetchOptions = {}
-): Promise<T> {
+  body?: B,
+  options: Omit<RequestInit, 'method' | 'body'> = {}
+): Promise<ApiResponse<T>> {
   return secureFetch<T>(url, {
+    ...options,
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    body: data ? JSON.stringify(data) : undefined,
-    ...options,
-    // Skip CSRF token in server context
-    skipCSRF: !isBrowser || options.skipCSRF === true,
+    body: body ? JSON.stringify(body) : undefined,
   })
 }
 
 /**
- * Secure DELETE request with automatic CSRF token handling
- * @param url - The URL to delete from
+ * Enhanced PATCH request with security features
+ * @param url - URL to fetch
+ * @param body - Request body
  * @param options - Additional fetch options
- * @returns Promise resolving to the JSON response data
+ * @returns Promise with typed response
  */
-export function secureDelete<T = any>(
+export async function securePatch<T = any, B = any>(
   url: string,
-  options: SecureFetchOptions = {}
-): Promise<T> {
+  body?: B,
+  options: Omit<RequestInit, 'method' | 'body'> = {}
+): Promise<ApiResponse<T>> {
   return secureFetch<T>(url, {
-    method: 'DELETE',
     ...options,
-    // Skip CSRF token in server context
-    skipCSRF: !isBrowser || options.skipCSRF === true,
-  })
-}
-
-/**
- * Secure PATCH request with automatic CSRF token handling
- * @param url - The URL to patch
- * @param data - The data to send in the request body
- * @param options - Additional fetch options
- * @returns Promise resolving to the JSON response data
- */
-export function securePatch<T = any>(
-  url: string,
-  data?: any,
-  options: SecureFetchOptions = {}
-): Promise<T> {
-  return secureFetch<T>(url, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    body: data ? JSON.stringify(data) : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  })
+}
+
+/**
+ * Enhanced DELETE request with security features
+ * @param url - URL to fetch
+ * @param options - Additional fetch options
+ * @returns Promise with typed response
+ */
+export async function secureDelete<T = any>(
+  url: string,
+  options: Omit<RequestInit, 'method'> = {}
+): Promise<ApiResponse<T>> {
+  return secureFetch<T>(url, {
     ...options,
-    // Skip CSRF token in server context
-    skipCSRF: !isBrowser || options.skipCSRF === true,
+    method: 'DELETE',
   })
 } 
